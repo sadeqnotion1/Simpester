@@ -1,0 +1,11 @@
+general:
+  min_width: 800
+  min_height: 600
+  allowed_formats: [jpg, jpeg, png, webp]
+  skip_keywords: [thumb, thumbnail, small, lowres]
+  download_dir: G:/SimpCounty/Margaret Qualley
+  rate_limit: 1.0  # seconds between requests
+  timeout: 30
+  max_pages: 100  # maximum number of pages to crawl
+  crawl_depth: 3  # how many links deep to crawl from home page
+  max_workers: 10  # number of parallel crawl threads

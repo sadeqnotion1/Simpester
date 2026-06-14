@@ -1,0 +1,9 @@
+site:
+  name: hawtcelebs_margaret
+  base_url: https://www.hawtcelebs.com/category/Margaret-Qualley/
+  selectors:
+    - "img[src]"
+    - "img[data-src]"
+  pagination:
+    next_selector: null
+    base_url: null

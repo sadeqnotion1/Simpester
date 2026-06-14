@@ -1,0 +1,9 @@
+general:
+  min_width: 1000
+  min_height: 800
+  download_dir: "G:/SimpCounty/Margaret Qualley"
+  rate_limit: 0.1
+  timeout: 30
+  max_pages: 5000
+  crawl_depth: 6
+  max_workers: 25

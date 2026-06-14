@@ -1,0 +1,13 @@
+site:
+  name: margaretqualley
+  base_url: https://margaretqualley.org/photos/
+  # CSS selectors for finding images (optional, if not using default img tag scraping)
+  selectors:
+    - "img[src]"
+    - "img[data-src]"
+  # Pagination configuration (if needed)
+  pagination:
+    # Example: "next" link selector and base URL for constructing next page URL
+    # left as null for now since we are only scraping the homepage for simplicity
+    next_selector: null
+    base_url: null

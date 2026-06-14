@@ -1,0 +1,9 @@
+site:
+  name: bellazon_margaret
+  base_url: https://www.bellazon.com/main/topic/40550-margaret-qualley/
+  selectors:
+    - "img[src]"
+    - "img[data-src]"
+  pagination:
+    next_selector: null
+    base_url: null
