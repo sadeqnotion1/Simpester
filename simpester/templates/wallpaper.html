@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}Fetch Wallpaper{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto grid lg:grid-cols-[380px_1fr] gap-6">
+
+  <!-- Config -->
+  <section class="glass rounded-xl p-6 space-y-4 self-start">
+    <div class="flex items-center gap-3">
+      <span class="material-symbols-outlined text-primary">wallpaper</span>
+      <h2 class="font-display text-lg font-semibold">Crawl configuration</h2>
+    </div>
+
+    <div class="field">
+      <label for="wp-site">Site name</label>
+      <input class="input" id="wp-site" value="margaretqualley" placeholder="margaretqualley" />
+    </div>
+    <div class="field">
+      <label for="wp-base">Base URL (optional)</label>
+      <input class="input" id="wp-base" placeholder="https://example.org/" />
+    </div>
+    <div class="field">
+      <label for="wp-dir">Download directory</label>
+      <input class="input" id="wp-dir" placeholder="G:/SimpCounty/Margaret Qualley" />
+    </div>
+
+    <div class="grid grid-cols-2 gap-3">
+      <div class="field">
+        <label for="wp-minw">Min width</label>
+        <input class="input" id="wp-minw" type="number" value="800" />
+      </div>
+      <div class="field">
+        <label for="wp-minh">Min height</label>
+        <input class="input" id="wp-minh" type="number" value="600" />
+      </div>
+      <div class="field">
+        <label for="wp-pages">Max pages</label>
+        <input class="input" id="wp-pages" type="number" value="100" />
+      </div>
+      <div class="field">
+        <label for="wp-depth">Crawl depth</label>
+        <input class="input" id="wp-depth" type="number" value="3" />
+      </div>
+      <div class="field">
+        <label for="wp-workers">Workers</label>
+        <input class="input" id="wp-workers" type="number" value="10" />
+      </div>
+      <div class="field">
+        <label for="wp-rate">Rate limit (s)</label>
+        <input class="input" id="wp-rate" type="number" step="0.1" value="1.0" />
+      </div>
+    </div>
+
+    <div class="flex gap-3 pt-2">
+      <button class="btn btn-primary flex-1" id="wp-start">
+        <span class="material-symbols-outlined text-[20px]">play_arrow</span> Start
+      </button>
+      <button class="btn btn-danger" id="wp-stop" disabled>
+        <span class="material-symbols-outlined text-[20px]">stop</span> Stop
+      </button>
+    </div>
+  </section>
+
+  <!-- Live -->
+  <section class="space-y-4">
+    <div class="grid grid-cols-3 gap-4">
+      <div class="glass rounded-xl p-5">
+        <div class="text-on-surface-variant text-xs font-semibold uppercase tracking-wide">Pages crawled</div>
+        <div class="stat-value text-3xl mt-2" id="wp-stat-pages">0</div>
+      </div>
+      <div class="glass rounded-xl p-5">
+        <div class="text-on-surface-variant text-xs font-semibold uppercase tracking-wide">Images found</div>
+        <div class="stat-value text-3xl mt-2 text-primary" id="wp-stat-images">0</div>
+      </div>
+      <div class="glass rounded-xl p-5">
+        <div class="text-on-surface-variant text-xs font-semibold uppercase tracking-wide">Status</div>
+        <div class="mt-3" id="wp-stat-status"><span class="badge">idle</span></div>
+      </div>
+    </div>
+
+    <div class="glass rounded-xl p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-display font-semibold">Live log</h3>
+        <span class="text-xs text-on-surface-variant" id="wp-jobid"></span>
+      </div>
+      <div class="console" id="wp-log"><div class="log-line log-info">Configure the crawl and press Start.</div></div>
+    </div>
+  </section>
+
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  const wpStart = document.getElementById("wp-start");
+  const wpStop = document.getElementById("wp-stop");
+  let wpJobId = null;
+
+  function wpSetRunning(running) {
+    wpStart.disabled = running;
+    wpStop.disabled = !running;
+  }
+
+  function wpRenderStatus(status) {
+    document.getElementById("wp-stat-status").innerHTML = Simp.badge(status);
+  }
+
+  wpStart.addEventListener("click", async () => {
+    const payload = {
+      site: document.getElementById("wp-site").value.trim(),
+      base_url: document.getElementById("wp-base").value.trim(),
+      download_dir: document.getElementById("wp-dir").value.trim(),
+      min_width: document.getElementById("wp-minw").value,
+      min_height: document.getElementById("wp-minh").value,
+      max_pages: document.getElementById("wp-pages").value,
+      crawl_depth: document.getElementById("wp-depth").value,
+      max_workers: document.getElementById("wp-workers").value,
+      rate_limit: document.getElementById("wp-rate").value,
+    };
+    wpSetRunning(true);
+    wpRenderStatus("running");
+    const res = await Simp.post("/api/wallpaper/start", payload);
+    wpJobId = res.job_id;
+    document.getElementById("wp-jobid").textContent = "job " + wpJobId;
+    trackJob(wpJobId, {
+      onUpdate: (snap) => {
+        Simp.renderLog(document.getElementById("wp-log"), snap.log);
+        document.getElementById("wp-stat-pages").textContent = snap.stats.pages || 0;
+        document.getElementById("wp-stat-images").textContent = snap.stats.images_found || 0;
+        wpRenderStatus(snap.status);
+        if (snap.status !== "running") wpSetRunning(false);
+      },
+    });
+  });
+
+  wpStop.addEventListener("click", async () => {
+    if (wpJobId) await Simp.post(`/api/jobs/${wpJobId}/stop`, {});
+    wpStop.disabled = true;
+  });
+</script>
+{% endblock %}

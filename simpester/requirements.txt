@@ -1,0 +1,14 @@
+# Simpester — Elite Control (combined requirements)
+# GUI control center
+Flask>=2.0.0
+pywebview>=4.0.0
+waitress>=2.1.0
+
+# Fetch Wallpaper (original tool)
+requests>=2.25.1
+beautifulsoup4>=4.9.3
+lxml>=4.6.3
+Pillow>=8.3.0
+PyYAML>=5.4.1
+
+# Pornripsto downloader uses only the Python standard library.

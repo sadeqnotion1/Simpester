@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
+  <section class="glass rounded-xl p-6">
+    <h2 class="font-display text-xl font-semibold mb-1">About Simpester</h2>
+    <p class="text-on-surface-variant text-sm">Elite Control is a single Flask + pywebview shell that hosts each of your tools as a module. Tools run as background jobs and stream their logs into the UI. Everything runs locally on your machine — nothing is sent anywhere except the sites each tool already talks to.</p>
+  </section>
+
+  <section class="glass rounded-xl p-6 space-y-4">
+    <h3 class="font-display text-lg font-semibold">Adding more tools</h3>
+    <p class="text-on-surface-variant text-sm">Each module is two pieces: an adapter under <code class="text-primary">control_center/modules/</code> exposing a <code class="text-primary">run_x(job, params)</code> function, and an entry in the <code class="text-primary">MODULES</code> list in <code class="text-primary">app.py</code>. The job object gives you <code class="text-primary">add_log()</code> and <code class="text-primary">set_stats()</code> so any tool gets live progress for free.</p>
+    <div class="flex flex-wrap gap-2">
+      <span class="badge">Fetch Wallpaper — wired</span>
+      <span class="badge">Pornripsto — wired</span>
+      <span class="badge">MusicMV — slot</span>
+      <span class="badge">Colab-to-Tel — slot</span>
+      <span class="badge">TikTok Archiver — slot</span>
+    </div>
+  </section>
+
+  <section class="glass rounded-xl p-6">
+    <h3 class="font-display text-lg font-semibold mb-2">Runtime</h3>
+    <ul class="text-on-surface-variant text-sm space-y-1 list-disc pl-5">
+      <li>Default window uses pywebview; if no webview runtime is found it opens in your browser automatically.</li>
+      <li>The original Fetch Wallpaper CLI still works: <code class="text-primary">python main.py --cli --site margaretqualley</code></li>
+      <li>Downloads go to each tool's configured output directory.</li>
+    </ul>
+  </section>
+</div>
+{% endblock %}

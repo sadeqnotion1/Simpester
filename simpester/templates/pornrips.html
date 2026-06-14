@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Pornripsto{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto grid lg:grid-cols-[380px_1fr] gap-6">
+
+  <section class="glass rounded-xl p-6 space-y-4 self-start">
+    <div class="flex items-center gap-3">
+      <span class="material-symbols-outlined text-primary">movie</span>
+      <h2 class="font-display text-lg font-semibold">Bulk download</h2>
+    </div>
+
+    <div class="field">
+      <label for="pr-date">Date</label>
+      <input class="input" id="pr-date" placeholder="2024-06-01" />
+    </div>
+    <div class="field">
+      <label for="pr-dir">Output directory</label>
+      <input class="input" id="pr-dir" placeholder="G:/SimpCounty/Pornrips" />
+    </div>
+    <div class="field">
+      <label for="pr-excl">Excluded studios (comma separated)</label>
+      <input class="input" id="pr-excl" value="Brazzers, Naughty America, Reality Kings, Digital Playground" />
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div class="field">
+        <label for="pr-pages">Max index pages</label>
+        <input class="input" id="pr-pages" type="number" value="5" />
+      </div>
+      <div class="field">
+        <label for="pr-workers">Workers</label>
+        <input class="input" id="pr-workers" type="number" value="5" />
+      </div>
+    </div>
+
+    <div class="flex gap-3 pt-2">
+      <button class="btn btn-primary flex-1" id="pr-start">
+        <span class="material-symbols-outlined text-[20px]">play_arrow</span> Start
+      </button>
+      <button class="btn btn-danger" id="pr-stop" disabled>
+        <span class="material-symbols-outlined text-[20px]">stop</span> Stop
+      </button>
+    </div>
+  </section>
+
+  <section class="space-y-4">
+    <div class="grid grid-cols-4 gap-4">
+      <div class="glass rounded-xl p-5">
+        <div class="text-on-surface-variant text-xs font-semibold uppercase tracking-wide">Posts found</div>
+        <div class="stat-value text-2xl mt-2" id="pr-stat-posts">0</div>
+      </div>
+      <div class="glass rounded-xl p-5">
+        <div class="text-on-surface-variant text-xs font-semibold uppercase tracking-wide">Resolved</div>
+        <div class="stat-value text-2xl mt-2 text-primary" id="pr-stat-resolved">0</div>
+      </div>
+      <div class="glass rounded-xl p-5">
+        <div class="text-on-surface-variant text-xs font-semibold uppercase tracking-wide">Files</div>
+        <div class="stat-value text-2xl mt-2" id="pr-stat-files">0</div>
+      </div>
+      <div class="glass rounded-xl p-5">
+        <div class="text-on-surface-variant text-xs font-semibold uppercase tracking-wide">Downloaded</div>
+        <div class="stat-value text-2xl mt-2" id="pr-stat-mb">0 MB</div>
+      </div>
+    </div>
+
+    <div class="glass rounded-xl p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-display font-semibold">Live log</h3>
+        <span id="pr-status"><span class="badge">idle</span></span>
+      </div>
+      <div class="console" id="pr-log"><div class="log-line log-info">Enter a date and press Start. Magnets are written to magnets.txt in the output folder.</div></div>
+    </div>
+  </section>
+
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  const prStart = document.getElementById("pr-start");
+  const prStop = document.getElementById("pr-stop");
+  let prJobId = null;
+
+  function prSetRunning(running) {
+    prStart.disabled = running;
+    prStop.disabled = !running;
+  }
+  function prRenderStatus(status) {
+    document.getElementById("pr-status").innerHTML = Simp.badge(status);
+  }
+
+  prStart.addEventListener("click", async () => {
+    const date = document.getElementById("pr-date").value.trim();
+    if (!date) {
+      alert("Please enter a date, e.g. 2024-06-01");
+      return;
+    }
+    const payload = {
+      date: date,
+      output_dir: document.getElementById("pr-dir").value.trim(),
+      excluded: document.getElementById("pr-excl").value.trim(),
+      max_pages: document.getElementById("pr-pages").value,
+      workers: document.getElementById("pr-workers").value,
+    };
+    prSetRunning(true);
+    prRenderStatus("running");
+    const res = await Simp.post("/api/pornrips/start", payload);
+    prJobId = res.job_id;
+    trackJob(prJobId, {
+      onUpdate: (snap) => {
+        Simp.renderLog(document.getElementById("pr-log"), snap.log);
+        document.getElementById("pr-stat-posts").textContent = snap.stats.posts_found || 0;
+        document.getElementById("pr-stat-resolved").textContent = snap.stats.resolved || 0;
+        document.getElementById("pr-stat-files").textContent = snap.stats.files || 0;
+        document.getElementById("pr-stat-mb").textContent = (snap.stats.total_mb || 0) + " MB";
+        prRenderStatus(snap.status);
+        if (snap.status !== "running") prSetRunning(false);
+      },
+    });
+  });
+
+  prStop.addEventListener("click", async () => {
+    if (prJobId) await Simp.post(`/api/jobs/${prJobId}/stop`, {});
+    prStop.disabled = true;
+  });
+</script>
+{% endblock %}

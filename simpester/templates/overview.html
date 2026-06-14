@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Overview{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-7">
+
+  <section class="glass rounded-xl p-6">
+    <div class="flex items-center justify-between flex-wrap gap-4">
+      <div>
+        <h2 class="font-display text-2xl font-semibold">Control center</h2>
+        <p class="text-on-surface-variant text-sm mt-1">One launcher for every Simpester tool. Pick a module to configure and run it — progress streams here live.</p>
+      </div>
+      <span class="badge">Flask + pywebview · local</span>
+    </div>
+  </section>
+
+  <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="glass rounded-xl p-5">
+      <div class="text-on-surface-variant text-xs font-semibold uppercase tracking-wide">Modules</div>
+      <div class="stat-value text-3xl mt-2" id="kpi-modules">—</div>
+    </div>
+    <div class="glass rounded-xl p-5">
+      <div class="text-on-surface-variant text-xs font-semibold uppercase tracking-wide">Running</div>
+      <div class="stat-value text-3xl mt-2 text-primary" id="kpi-running">—</div>
+    </div>
+    <div class="glass rounded-xl p-5">
+      <div class="text-on-surface-variant text-xs font-semibold uppercase tracking-wide">Files this session</div>
+      <div class="stat-value text-3xl mt-2" id="kpi-files">—</div>
+    </div>
+    <div class="glass rounded-xl p-5">
+      <div class="text-on-surface-variant text-xs font-semibold uppercase tracking-wide">Errors</div>
+      <div class="stat-value text-3xl mt-2 text-error" id="kpi-errors">—</div>
+    </div>
+  </section>
+
+  <section>
+    <h3 class="font-display text-lg font-semibold mb-3">Tools</h3>
+    <div class="grid md:grid-cols-2 gap-4">
+      {% for m in modules %}
+      <a href="[[ m.route ]]" class="glass rounded-xl p-5 hover:border-primary/40 transition group block">
+        <div class="flex items-start gap-4">
+          <div class="size-12 rounded-md grid place-items-center bg-surface-low text-primary shrink-0">
+            <span class="material-symbols-outlined">[[ m.icon ]]</span>
+          </div>
+          <div class="min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="font-display font-semibold">[[ m.name ]]</span>
+              <span class="badge">[[ m.tag ]]</span>
+            </div>
+            <p class="text-on-surface-variant text-sm mt-1">[[ m.desc ]]</p>
+            <span class="inline-flex items-center gap-1 text-sm text-primary mt-3 group-hover:gap-2 transition-all">
+              Open <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+            </span>
+          </div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section>
+    <h3 class="font-display text-lg font-semibold mb-3">Recent activity</h3>
+    <div class="glass rounded-xl divide-y divide-outline-variant/30" id="recent-list">
+      <div class="p-5 text-on-surface-variant text-sm">No jobs yet. Launch a tool to get started.</div>
+    </div>
+  </section>
+
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  async function refreshOverview() {
+    const s = await Simp.get("/api/state");
+    document.getElementById("kpi-modules").textContent = s.modules;
+    document.getElementById("kpi-running").textContent = s.running;
+    document.getElementById("kpi-files").textContent = s.files;
+    document.getElementById("kpi-errors").textContent = s.errors;
+    const list = document.getElementById("recent-list");
+    if (s.recent && s.recent.length) {
+      list.innerHTML = s.recent.map((j) => `
+        <div class="p-4 flex items-center justify-between gap-4">
+          <div class="min-w-0">
+            <div class="font-medium truncate">${Simp.escape(j.label)}</div>
+            <div class="text-xs text-on-surface-variant">${Simp.fmtTime(j.created)}</div>
+          </div>
+          ${Simp.badge(j.status)}
+        </div>`).join("");
+    }
+  }
+  refreshOverview();
+  setInterval(refreshOverview, 2000);
+</script>
+{% endblock %}
