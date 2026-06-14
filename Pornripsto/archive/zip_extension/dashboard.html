@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PornRips Bulk Zip Downloader (1080p Only)</title>
+  <meta name="description" content="Scrapes PornRips date pages, downloads torrent files and screenshots, and packages them in folders within a single ZIP.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <div class="dashboard-wrapper">
+    <header class="main-header">
+      <div class="logo-container">
+        <span class="logo-icon">⚡</span>
+        <h1>PornRips ZIP Downloader</h1>
+      </div>
+      <div class="status-badge" id="pr-global-status">Idle</div>
+    </header>
+
+    <main class="dashboard-grid">
+      <!-- Left Panel: Configurations & Control -->
+      <section class="panel-card config-panel">
+        <h2>Target Date Configuration</h2>
+        
+        <div class="input-group">
+          <label for="pr-target-input">Target Date or URL</label>
+          <div class="input-row">
+            <input type="text" id="pr-target-input" placeholder="e.g. 2026/06/03 or full page URL" />
+            <button id="pr-btn-detect" class="btn btn-secondary">Detect Active Tab</button>
+          </div>
+          <span class="input-hint">Specify a date path YYYY/MM/DD or use the active tab link.</span>
+        </div>
+
+        <div class="control-actions">
+          <button id="pr-btn-start" class="btn btn-primary btn-large" disabled>
+            🚀 Start Bulk Download
+          </button>
+        </div>
+
+        <div class="progress-section" id="pr-progress-section" style="display: none;">
+          <h3>Overall Progress</h3>
+          <div class="progress-bar-container">
+            <div class="progress-bar-fill" id="pr-progress-bar-fill"></div>
+          </div>
+          <div class="progress-details">
+            <span id="pr-progress-label">Preparing...</span>
+            <span id="pr-progress-percent">0%</span>
+          </div>
+        </div>
+
+        <div class="zip-stats-card" id="pr-stats-card" style="display: none;">
+          <h3>ZIP Archive Stats</h3>
+          <div class="stats-grid">
+            <div class="stat-item">
+              <span class="stat-lbl">Folders / Videos</span>
+              <span class="stat-val" id="pr-stat-folders">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-lbl">Total Files</span>
+              <span class="stat-val" id="pr-stat-files">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-lbl">Downloaded Bytes</span>
+              <span class="stat-val" id="pr-stat-size">0 KB</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-lbl">Zip Process</span>
+              <span class="stat-val" id="pr-stat-zip">Pending</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Diagnostic Tester Tool -->
+        <div class="test-panel" id="pr-test-panel">
+          <h3>🧪 Diagnostic Image Tester</h3>
+          <p class="input-hint">Tests if the extension successfully bypasses Pixhost's hotlinking block.</p>
+          <button id="pr-btn-test" class="btn btn-secondary" style="width: 100%; margin-top: 8px;">Run Diagnostic Test</button>
+          <div id="pr-test-status" class="test-status-text" style="margin-top: 8px;">Pending test launch...</div>
+          <div class="test-preview-box" style="margin-top: 8px;">
+            <img id="pr-test-img" class="test-preview-img" style="display: none;" alt="Screenshot Preview" />
+            <span id="pr-test-placeholder" style="color: var(--text-dim); font-size: 11px;">Image Preview Box</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Panel: Scraper Queue and Status Logs -->
+      <section class="panel-card queue-panel">
+        <div class="panel-tabs">
+          <button id="tab-btn-queue" class="tab-btn active">1080p Video Queue (<span id="pr-queue-count">0</span>)</button>
+          <button id="tab-btn-logs" class="tab-btn">Console System Logs</button>
+        </div>
+
+        <div class="tab-content" id="tab-queue-content">
+          <div class="queue-list-container" id="pr-queue-list">
+            <div class="empty-state">
+              <p>Enter a date URL or click "Detect Active Tab" to fetch videos.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-content" id="tab-logs-content" style="display: none;">
+          <div class="logs-console" id="pr-logs-console">
+            <div class="log-entry log-info">[SYSTEM] Zip Downloader Dashboard Loaded.</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="main-footer">
+      <p>&copy; 2026 PornRips Standalone Zip Extension. Runs 100% locally. Zero server dependencies.</p>
+    </footer>
+  </div>
+
+  <!-- Libraries -->
+  <script src="jszip.min.js"></script>
+  <!-- Main Script -->
+  <script src="dashboard.js"></script>
+</body>
+</html>

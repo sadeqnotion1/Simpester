@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CineArchive - Telegram Video Database</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="logo-area">
+        <i class="fa-solid fa-clapperboard logo-icon"></i>
+        <span class="logo-text">Cine<span>Archive</span></span>
+      </div>
+      
+      <div class="nav-links">
+        <button class="nav-btn active" id="btn-library">
+          <i class="fa-solid fa-film"></i> Library
+        </button>
+        <button class="nav-btn" id="btn-dashboard">
+          <i class="fa-solid fa-chart-pie"></i> Dashboard
+        </button>
+        <button class="nav-btn" id="btn-sync">
+          <i class="fa-solid fa-arrows-rotate"></i> Sync & Scan
+        </button>
+      </div>
+
+      <div class="sidebar-footer">
+        <p class="footer-note">Powered by ThePornDB API</p>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Bar / Search Bar -->
+      <header class="top-bar">
+        <div class="search-wrapper">
+          <i class="fa-solid fa-magnifying-glass search-icon"></i>
+          <input type="text" id="search-input" placeholder="Search by scene title, site, performers, tags, or file name...">
+        </div>
+        <div class="scan-status-pill" id="scan-status-indicator" style="display: none;">
+          <span class="dot pulse"></span> <span id="scan-status-text">Scanning list...</span>
+        </div>
+      </header>
+
+      <!-- library section -->
+      <section class="section-container" id="library-section">
+        <!-- Spotlight Hero (Spotlight of a random/featured scene) -->
+        <div class="spotlight-card" id="spotlight-card" style="display: none;">
+          <div class="spotlight-backdrop" id="spotlight-backdrop"></div>
+          <div class="spotlight-gradient"></div>
+          <div class="spotlight-content">
+            <div class="spotlight-badge">SPOTLIGHT</div>
+            <h1 class="spotlight-title" id="spotlight-title">Scene Title</h1>
+            <div class="spotlight-meta">
+              <span id="spotlight-site"><i class="fa-solid fa-video"></i> Studio</span>
+              <span id="spotlight-date"><i class="fa-regular fa-calendar"></i> Date</span>
+              <span id="spotlight-parts"><i class="fa-solid fa-file-video"></i> 1 Part</span>
+            </div>
+            <p class="spotlight-description" id="spotlight-description">Description of the scene...</p>
+            <div class="spotlight-actions">
+              <button class="btn btn-primary" id="spotlight-btn-view">
+                <i class="fa-solid fa-circle-info"></i> View Details
+              </button>
+              <button class="btn btn-secondary" id="spotlight-btn-trailer" style="display: none;">
+                <i class="fa-solid fa-play"></i> Watch Trailer
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filters Section -->
+        <div class="filter-panel">
+          <div class="filter-group">
+            <label><i class="fa-solid fa-filter"></i> Studio / Site</label>
+            <select id="filter-site">
+              <option value="all">All Studios</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label><i class="fa-solid fa-calendar-days"></i> Year</label>
+            <select id="filter-year">
+              <option value="all">All Years</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label><i class="fa-solid fa-tag"></i> Tag</label>
+            <select id="filter-tag">
+              <option value="all">All Tags</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label><i class="fa-solid fa-toggle-on"></i> Splits Only</label>
+            <div class="toggle-wrapper">
+              <input type="checkbox" id="filter-splits" class="toggle-checkbox">
+              <label for="filter-splits" class="toggle-label"></label>
+            </div>
+          </div>
+
+          <div class="filter-group">
+            <label><i class="fa-solid fa-circle-check"></i> Status</label>
+            <select id="filter-status">
+              <option value="all">All Scenes</option>
+              <option value="matched">Matched (API)</option>
+              <option value="local">Unmatched (Local Only)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Scenes Grid -->
+        <div class="scenes-header">
+          <h2 class="section-title">All Scenes (<span id="results-count">0</span>)</h2>
+          <div class="sort-wrapper">
+            <label>Sort By:</label>
+            <select id="sort-select">
+              <option value="date-desc">Newest Release</option>
+              <option value="date-asc">Oldest Release</option>
+              <option value="title-asc">Title A-Z</option>
+              <option value="parts-desc">Most Parts</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="scenes-grid" id="scenes-grid">
+          <!-- Movie cards injected dynamically -->
+          <div class="loading-state">
+            <i class="fa-solid fa-circle-notch fa-spin"></i>
+            <p>Loading database library...</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Dashboard Section -->
+      <section class="section-container" id="dashboard-section" style="display: none;">
+        <h2 class="section-title">Archive Dashboard</h2>
+        
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon-wrapper gold">
+              <i class="fa-solid fa-clapperboard"></i>
+            </div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-total-scenes">0</span>
+              <span class="stat-label">Total Unique Scenes</span>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon-wrapper blue">
+              <i class="fa-solid fa-file-video"></i>
+            </div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-total-files">0</span>
+              <span class="stat-label">Total Files (Parts)</span>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon-wrapper purple">
+              <i class="fa-solid fa-building"></i>
+            </div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-total-studios">0</span>
+              <span class="stat-label">Unique Studios</span>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon-wrapper green">
+              <i class="fa-solid fa-users"></i>
+            </div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-total-performers">0</span>
+              <span class="stat-label">Unique Performers</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-details-grid">
+          <!-- Match Rate Card -->
+          <div class="dashboard-card match-rate-card">
+            <h3><i class="fa-solid fa-shield-halved"></i> Metadata Match Rate</h3>
+            <div class="match-rate-flex">
+              <div class="progress-circle-wrapper">
+                <svg class="progress-ring" width="160" height="160">
+                  <circle class="progress-ring__circle-bg" stroke="#1d1f24" stroke-width="12" fill="transparent" r="70" cx="80" cy="80"/>
+                  <circle class="progress-ring__circle" id="stat-match-circle" stroke="#dba506" stroke-width="12" fill="transparent" r="70" cx="80" cy="80"/>
+                </svg>
+                <div class="progress-ring-text" id="stat-match-percent">0%</div>
+              </div>
+              <div class="match-rate-info">
+                <p>ThePornDB Match: <span id="stat-matched-count">0</span> scenes</p>
+                <p>Local Placeholder: <span id="stat-local-count">0</span> scenes</p>
+                <p class="match-tip"><i class="fa-solid fa-circle-info"></i> Matched scenes fetch full covers, backdrops, actor profiles, summaries, and tag metadata.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Studio Distribution Card -->
+          <div class="dashboard-card top-studios-card">
+            <h3><i class="fa-solid fa-chart-bar"></i> Top Studios in Archive</h3>
+            <div class="bar-chart-container" id="bar-chart-studios">
+              <!-- Dynamically populated bars -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Sync / Scanner Section -->
+      <section class="section-container" id="sync-section" style="display: none;">
+        <h2 class="section-title">Synchronize Video Archive</h2>
+        
+        <div class="sync-card">
+          <div class="sync-header-content">
+            <i class="fa-solid fa-arrows-spin sync-icon"></i>
+            <div>
+              <h3>Import & Scrape Telegram Log</h3>
+              <p>Process your video export log, group multi-part segments together, and scrape movie cards/metadata from ThePornDB API.</p>
+            </div>
+          </div>
+
+          <div class="sync-input-group">
+            <label for="sync-file-path">Telegram Log File Path (.txt)</label>
+            <div class="input-btn-row">
+              <input type="text" id="sync-file-path" value="E:\Projects\Prnripsto\Database\Bella Rolland\telegramtxt.txt">
+              <button class="btn btn-primary" id="btn-start-sync">
+                <i class="fa-solid fa-magnifying-glass-plus"></i> Scan & Sync Now
+              </button>
+            </div>
+          </div>
+          
+          <div class="sync-options-row">
+            <div class="checkbox-option-wrapper">
+              <input type="checkbox" id="sync-force-recheck" class="option-checkbox">
+              <label for="sync-force-recheck"><strong>Force Re-scan:</strong> Re-query and verify all videos against APIs (ignores cache)</label>
+            </div>
+          </div>
+
+          <!-- Scanning Progress Bar (hidden by default) -->
+          <div class="scan-progress-area" id="scan-progress-area" style="display: none;">
+            <div class="progress-header">
+              <span class="progress-status" id="progress-status-title">Processing file...</span>
+              <span class="progress-ratio" id="progress-status-ratio">0/0 (0%)</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" id="progress-bar-fill" style="width: 0%;"></div>
+            </div>
+            <p class="progress-current-scene" id="progress-current-scene">Initializing...</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Detail Modal -->
+  <div class="modal-backdrop" id="detail-modal" style="display: none;">
+    <div class="modal-card">
+      <button class="modal-close-btn" id="modal-close-btn">&times;</button>
+      <div class="modal-backdrop-blur" id="modal-backdrop-blur"></div>
+      
+      <div class="modal-body">
+        <div class="modal-poster-side">
+          <div class="modal-poster-wrapper">
+            <img src="" alt="Poster" id="modal-poster" onerror="this.src='https://placehold.co/400x600/17181c/dba506?text=No+Poster'">
+          </div>
+          <button class="btn btn-block btn-primary" id="modal-btn-url" style="display: none;">
+            <i class="fa-solid fa-up-right-from-square"></i> View on ThePornDB
+          </button>
+          <button class="btn btn-block btn-secondary" id="modal-btn-studio-url" style="display: none;">
+            <i class="fa-solid fa-up-right-from-square"></i> View Studio Site
+          </button>
+          <button class="btn btn-block btn-secondary" id="modal-btn-trailer" style="display: none;">
+            <i class="fa-solid fa-play"></i> Watch Official Trailer
+          </button>
+          <button class="btn btn-block btn-secondary" id="modal-btn-rescan">
+            <i class="fa-solid fa-arrows-rotate"></i> Re-scan Scene
+          </button>
+        </div>
+
+        <div class="modal-details-side">
+          <div class="modal-studio-row">
+            <span class="modal-studio" id="modal-studio">Studio</span>
+            <span class="modal-network" id="modal-network" style="display: none;">Network</span>
+            <span class="modal-source" id="modal-source" style="display: none;">Source</span>
+            <span class="modal-date" id="modal-date"><i class="fa-regular fa-calendar"></i> Date</span>
+          </div>
+
+          <h2 class="modal-title" id="modal-title">Scene Title</h2>
+          
+          <div class="modal-desc-box">
+            <h4>Description</h4>
+            <p id="modal-description">Description goes here...</p>
+          </div>
+
+          <div class="modal-performers-box">
+            <h4>Performers</h4>
+            <div class="performers-flex" id="modal-performers">
+              <!-- Performers list -->
+            </div>
+          </div>
+
+          <div class="modal-screenshots-box" id="modal-screenshots-box" style="display: none;">
+            <h4>Scene Screenshots</h4>
+            <div class="screenshots-gallery" id="modal-screenshots">
+              <!-- Screenshots list -->
+            </div>
+          </div>
+
+          <div class="modal-files-box">
+            <h4>Local Files (<span id="modal-files-count">0</span>)</h4>
+            <div class="files-list" id="modal-files-list">
+              <!-- Original telegram files list -->
+            </div>
+          </div>
+
+          <div class="modal-tags-box">
+            <h4>Tags</h4>
+            <div class="tags-flex" id="modal-tags">
+              <!-- Tags pills -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Lightbox Overlay -->
+  <div class="lightbox-backdrop" id="lightbox-modal" style="display: none;" onclick="closeLightbox()">
+    <img src="" id="lightbox-img">
+  </div>
+  
+  <script src="app.js"></script>
+</body>
+</html>

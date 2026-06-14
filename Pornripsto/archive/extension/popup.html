@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>PornRips Scraper</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1><i class="fas fa-download"></i> PornRips Scraper</h1>
+      <div class="subtitle">Standalone Extension</div>
+    </div>
+
+    <div class="progress-section">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressBar"></div>
+      </div>
+      <p id="progressText">Ready</p>
+    </div>
+
+    <div class="section retry-section" id="retrySection" style="display: none;">
+      <div class="error-info">
+        <i class="fas fa-exclamation-triangle"></i>
+        <span id="failedScreenshotText">0 screenshots failed to download</span>
+      </div>
+      <button id="toggleErrorLog" class="btn btn-sm btn-outline" style="margin-bottom: 12px;">
+        <i class="fas fa-list"></i> <span id="toggleErrorLogText">Show Error Log</span>
+      </button>
+      <div id="errorLogContainer" style="display: none;">
+        <div class="error-log" id="errorLog">
+          <!-- Error details will be populated here -->
+        </div>
+      </div>
+      <button id="retryScreenshots" class="btn btn-warning">
+        <i class="fas fa-redo"></i> Retry Failed Screenshots
+      </button>
+    </div>
+
+    <div class="section">
+      <h3><i class="fas fa-calendar-alt"></i> Date Filter</h3>
+      <div class="form-group">
+        <label><i class="fas fa-calendar-day"></i> Select Date to Scrape:</label>
+        <input type="date" id="specificDate" value="" />
+      </div>
+    </div>
+
+    <div class="section">
+      <h3><i class="fas fa-tv"></i> Resolution</h3>
+      <div class="resolution-chips">
+        <label class="chip">
+          <input type="checkbox" id="res480p" />
+          <span>480p</span>
+        </label>
+        <label class="chip">
+          <input type="checkbox" id="res720p" />
+          <span>720p</span>
+        </label>
+        <label class="chip active">
+          <input type="checkbox" id="res1080p" checked />
+          <span>1080p</span>
+        </label>
+        <label class="chip">
+          <input type="checkbox" id="res2160p" />
+          <span>2160p</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3><i class="fas fa-bolt"></i> Actions</h3>
+      <div class="button-group">
+        <button id="scrapeCurrentPage" class="btn btn-primary">
+          <i class="fas fa-file"></i> Current Page
+        </button>
+        <button id="scrapeSelected" class="btn btn-secondary">
+          <i class="fas fa-check-square"></i> Selected (<span id="selectedCount">0</span>)
+        </button>
+        <button id="scrapeByDate" class="btn btn-primary">
+          <i class="fas fa-calendar-check"></i> Scrape All
+        </button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Selection Mode</h3>
+      <div class="button-group">
+        <button id="toggleSelection" class="btn btn-outline">
+          Enable Selection Mode
+        </button>
+        <button id="clearSelection" class="btn btn-outline">
+          Clear Selection
+        </button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Queue (<span id="queueCount">0</span>)</h3>
+      <div id="queueList" class="queue-list">
+        <p class="empty-message">No items in queue</p>
+      </div>
+      <button id="clearQueue" class="btn btn-danger btn-sm">Clear Queue</button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

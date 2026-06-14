@@ -1,0 +1,104 @@
+/* Content script styles for PornRips Scraper Extension */
+
+/* Selectable posts */
+article.post.scraper-selectable {
+  cursor: pointer !important;
+  transition: all 0.3s ease !important;
+  position: relative !important;
+}
+
+article.post.scraper-selectable:hover {
+  transform: scale(1.02) !important;
+  box-shadow: 0 4px 12px rgba(1, 153, 219, 0.3) !important;
+  border: 2px solid #0199DB !important;
+}
+
+/* Selected posts */
+article.post.scraper-selected {
+  background: linear-gradient(135deg, rgba(1, 153, 219, 0.1), rgba(1, 196, 219, 0.1)) !important;
+  border: 3px solid #0199DB !important;
+  box-shadow: 0 4px 16px rgba(1, 153, 219, 0.4) !important;
+}
+
+article.post.scraper-selected::before {
+  content: '✓';
+  position: absolute !important;
+  top: 10px !important;
+  right: 10px !important;
+  width: 32px !important;
+  height: 32px !important;
+  background: #0199DB !important;
+  color: white !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 20px !important;
+  font-weight: bold !important;
+  z-index: 100 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+  animation: checkmarkPop 0.3s ease !important;
+}
+
+@keyframes checkmarkPop {
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Notification */
+.scraper-notification {
+  position: fixed !important;
+  top: 20px !important;
+  right: 20px !important;
+  background: #0199DB !important;
+  color: white !important;
+  padding: 16px 24px !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  z-index: 10000 !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  opacity: 0 !important;
+  transform: translateX(100px) !important;
+  transition: all 0.3s ease !important;
+  max-width: 300px !important;
+}
+
+.scraper-notification.show {
+  opacity: 1 !important;
+  transform: translateX(0) !important;
+}
+
+/* Hover hint */
+article.post.scraper-selectable::after {
+  content: 'Click to select';
+  position: absolute !important;
+  top: 10px !important;
+  right: 10px !important;
+  background: rgba(1, 153, 219, 0.9) !important;
+  color: white !important;
+  padding: 6px 12px !important;
+  border-radius: 4px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  opacity: 0 !important;
+  transition: opacity 0.3s ease !important;
+  pointer-events: none !important;
+  z-index: 99 !important;
+}
+
+article.post.scraper-selectable:hover::after {
+  opacity: 1 !important;
+}
+
+article.post.scraper-selected::after {
+  display: none !important;
+}
