@@ -104,7 +104,16 @@ def scrape_date_page(date_normalized, max_pages, job):
         except Exception as exc:  # noqa: BLE001
             job.add_log("Index page " + str(page) + " unavailable (" + str(exc) + "). Stopping pagination.", "warn")
             break
-        links = re.findall(r'href="(https://pornrips\.to/[^"]+\.html)"', html)
+        matches = re.findall(
+            r'<h2 class=["\']?entry-title["\']?><a\s+[^>]*href=["\']?([^"\'\s>]+)["\']?[^>]*>([^<]+)</a>',
+            html,
+        )
+        if not matches:
+            matches = re.findall(
+                r'<a\s+[^>]*href=["\']?([^"\'\s>]+)["\']?\s+rel=["\']?bookmark["\']?>([^<]+)</a>',
+                html,
+            )
+        links = [href for href, _title in matches if href.startswith("http")]
         new = [u for u in links if u not in seen]
         for u in new:
             seen.add(u)
