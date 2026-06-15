@@ -210,6 +210,87 @@ def scrape_date_range(date_start, date_end, max_pages, job, search_term=""):
     return all_urls
 
 
+def _date_from_title(title):
+    """Parse the release date from a pornrips title's .YY.MM.DD. marker.
+    'BlackedRaw.24.03.25.Bella.Rolland…' -> datetime(2024, 3, 25). None if absent."""
+    from datetime import datetime
+    m = re.search(r"\.(\d{2,4})\.(\d{2})\.(\d{2})\.", title or "")
+    if not m:
+        return None
+    y, mm, dd = (int(x) for x in m.groups())
+    if y < 100:
+        y += 2000
+    try:
+        return datetime(y, mm, dd)
+    except ValueError:
+        return None
+
+def scrape_search(term, max_pages, job, date_start=None, date_end=None):
+    """Use pornrips.to's own search (?s=term), paginating /page/N/?s=term.
+    Optionally keep only posts whose release date (parsed from the title) falls
+    within [date_start, date_end] inclusive. Dates use slash format YYYY/MM/DD."""
+    from datetime import datetime
+    import urllib.parse
+
+    def _parse(d):
+        d = (d or "").strip().replace("-", "/").strip("/")
+        return datetime.strptime(d, "%Y/%m/%d") if d else None
+
+    try:
+        start = _parse(date_start)
+        end = _parse(date_end)
+    except ValueError:
+        raise ValueError("Dates must look like 2026-06-01 (or 2026/06/01).")
+    if start and end and end < start:
+        start, end = end, start
+    if start and not end:
+        end = start
+
+    q = urllib.parse.quote_plus(term.strip())
+    post_urls, seen = [], set()
+    page = 1
+    while page <= max_pages and not job.stop_requested:
+        if page == 1:
+            url = SITE + "/?s=" + q
+        else:
+            url = SITE + "/page/" + str(page) + "/?s=" + q
+        job.add_log("Searching page " + str(page) + ": " + url)
+        try:
+            html = _fetch_url(url)
+        except Exception as exc:  # noqa: BLE001
+            job.add_log("Search page " + str(page) + " unavailable (" + str(exc) + "). Stopping.", "warn")
+            break
+
+        matches = re.findall(
+            r'<h2 class=["\']?entry-title["\']?><a\s+[^>]*href=["\']?([^"\'\s>]+)["\']?[^>]*>([^<]+)</a>',
+            html,
+        )
+        if not matches:
+            matches = re.findall(
+                r'<a\s+[^>]*href=["\']?([^"\'\s>]+)["\']?\s+rel=["\']?bookmark["\']?>([^<]+)</a>',
+                html,
+            )
+        if not matches:
+            job.add_log("  no more search results.")
+            break
+
+        kept = 0
+        for href, title in matches:
+            if not href.startswith("http") or href in seen:
+                continue
+            if start or end:
+                d = _date_from_title(title)
+                if d is not None and ((start and d < start) or (end and d > end)):
+                    continue
+            seen.add(href)
+            post_urls.append(href)
+            kept += 1
+        job.add_log("  kept " + str(kept) + " posts (total " + str(len(post_urls)) + ")")
+        job.set_stats(posts_found=len(post_urls), pages=page)
+        page += 1
+    return post_urls
+
+
 def run_pornrips(job, params):
     raw_date = (params.get("date") or params.get("date_start") or "").strip()
     raw_end = (params.get("date_end") or "").strip()
@@ -217,17 +298,19 @@ def run_pornrips(job, params):
 
     date_normalized = raw_date.replace("-", "/").strip("/")
     end_normalized = raw_end.replace("-", "/").strip("/")
-    if not date_normalized:
-        raise ValueError("A date (or start date) is required, e.g. 2024-06-01")
+    if not date_normalized and not search_term:
+        raise ValueError("Provide a date/start date, or a search term.")
 
     is_range = bool(end_normalized) and end_normalized != date_normalized
 
-    if is_range:
-        label = date_normalized.replace("/", "-") + "_to_" + end_normalized.replace("/", "-")
-    else:
-        label = date_normalized.replace("/", "-")
+    parts = []
     if search_term:
-        label = re.sub(r"[^\w\-]+", "_", search_term).strip("_") + "_" + label
+        parts.append(re.sub(r"[^\w\-]+", "_", search_term).strip("_") or "search")
+    if is_range:
+        parts.append(date_normalized.replace("/", "-") + "_to_" + end_normalized.replace("/", "-"))
+    elif date_normalized:
+        parts.append(date_normalized.replace("/", "-"))
+    label = "_".join(parts) or "pornrips"
 
     out_dir = params.get("output_dir") or os.path.join(
         os.getcwd(), "downloads", "pornrips", label
@@ -259,14 +342,21 @@ def run_pornrips(job, params):
     job.set_stats(date=label, posts_found=0, resolved=0, files=0, total_mb=0.0, skipped=0)
     job.add_log("Output → " + out_dir)
     job.add_log("Excluded studios: " + ", ".join(excluded))
-    if search_term:
-        job.add_log("Search term: '" + search_term + "' (listing-title match)")
 
-    if is_range:
+    if search_term:
+        job.add_log("Search mode → " + SITE + "/?s=" + search_term)
+        if date_normalized or end_normalized:
+            job.add_log("Date window: " + (date_normalized or "any") + " → " + (end_normalized or date_normalized or "any"))
+        post_urls = scrape_search(
+            search_term, max_pages, job,
+            date_start=date_normalized or None,
+            date_end=end_normalized or None,
+        )
+    elif is_range:
         job.add_log("Date range: " + date_normalized + " → " + end_normalized)
-        post_urls = scrape_date_range(date_normalized, end_normalized, max_pages, job, search_term)
+        post_urls = scrape_date_range(date_normalized, end_normalized, max_pages, job)
     else:
-        post_urls = scrape_date_page(date_normalized, max_pages, job, search_term)
+        post_urls = scrape_date_page(date_normalized, max_pages, job)
     if job.stop_requested:
         return
     if not post_urls:
