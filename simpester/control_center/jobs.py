@@ -99,7 +99,7 @@ class JobManager:
         errors = sum(1 for j in all_jobs if j.status == "error")
         files = 0
         for j in all_jobs:
-            for key in ("files", "downloaded", "images_downloaded"):
+            for key in ("files", "downloaded", "images_downloaded", "images_found"):
                 v = j.stats.get(key)
                 if isinstance(v, (int, float)):
                     files += int(v)
