@@ -398,13 +398,23 @@ def scrape_pasted_search(search_html, job, search_term="", date_start=None, date
         d = (d or "").strip().replace("-", "/").strip("/")
         return datetime.strptime(d, "%Y/%m/%d") if d else None
 
+    html = (search_html or "").strip()
+    if not html:
+        job.add_log("No HTML pasted.", "warn")
+        return []
+    if "just a moment" in html.lower() and "entry-title" not in html.lower():
+        job.add_log("The pasted HTML is the Cloudflare challenge page, not the search results. In your browser: wait for the page to fully load, then View Source.", "error")
+        return []
     start, end = _parse(date_start), _parse(date_end)
     if start and end and end < start:
         start, end = end, start
     if start and not end:
         end = start
-    urls = _extract_posts(search_html or "", search_term, start, end)
-    job.add_log("Parsed " + str(len(urls)) + " posts from pasted HTML.")
+    urls = _extract_posts(html, search_term, start, end)
+    if not urls:
+        job.add_log("Parsed 0 posts from pasted HTML. Make sure you pasted the search results page (with post links), not the Cloudflare challenge page.", "warn")
+    else:
+        job.add_log("Parsed " + str(len(urls)) + " posts from pasted HTML.")
     job.set_stats(posts_found=len(urls))
     return urls
 
