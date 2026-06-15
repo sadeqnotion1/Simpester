@@ -208,13 +208,13 @@ def run_pornrips(job, params):
             return
 
         if adv_mode != "Disabled" and selected_lower:
-            starts = any(title_lower.startswith(s) for s in selected_lower)
-            if adv_mode == "Exclude" and starts:
+            matched = any(s in title_lower for s in selected_lower)
+            if adv_mode == "Exclude" and matched:
                 counters["skipped"] += 1
                 job.set_stats(skipped=counters["skipped"])
                 job.add_log("Skipping (advanced blacklist): " + details["title"])
                 return
-            if adv_mode == "Include" and not starts:
+            if adv_mode == "Include" and not matched:
                 counters["skipped"] += 1
                 job.set_stats(skipped=counters["skipped"])
                 job.add_log("Skipping (advanced whitelist): " + details["title"])
