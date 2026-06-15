@@ -12,3 +12,6 @@ Pillow>=8.3.0
 PyYAML>=5.4.1
 
 # Pornripsto downloader uses only the Python standard library.
+# Cloudflare bypass for search endpoint (optional but recommended).
+curl_cffi
+cloudscraper

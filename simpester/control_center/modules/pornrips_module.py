@@ -34,6 +34,36 @@ def _fetch_url(url, timeout=30):
         return resp.read().decode(charset, errors="replace")
 
 
+def _fetch_search(url):
+    """Fetch a Cloudflare-protected page (the ?s= search endpoint).
+    Tries a TLS-impersonating client first, then cloudscraper, then plain urllib."""
+    headers = {
+        "User-Agent": HEADERS["User-Agent"],
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Referer": SITE + "/",
+        "Upgrade-Insecure-Requests": "1",
+    }
+    try:
+        from curl_cffi import requests as cffi_requests
+        r = cffi_requests.get(url, headers=headers, impersonate="chrome", timeout=30)
+        if r.status_code == 200:
+            return r.text
+    except Exception:
+        pass
+    try:
+        import cloudscraper
+        scraper = cloudscraper.create_scraper()
+        r = scraper.get(url, headers=headers, timeout=30)
+        if r.status_code == 200:
+            return r.text
+    except Exception:
+        pass
+    req = urllib.request.Request(url, headers=headers)
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        return resp.read().decode("utf-8", "ignore")
+
+
 def _download_binary(url, dest_path, timeout=60):
     req = urllib.request.Request(url, headers=HEADERS)
     with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -256,7 +286,7 @@ def scrape_search(term, max_pages, job, date_start=None, date_end=None):
             url = SITE + "/page/" + str(page) + "/?s=" + q
         job.add_log("Searching page " + str(page) + ": " + url)
         try:
-            html = _fetch_url(url)
+            html = _fetch_search(url)
         except Exception as exc:  # noqa: BLE001
             job.add_log("Search page " + str(page) + " unavailable (" + str(exc) + "). Stopping.", "warn")
             break
@@ -352,6 +382,11 @@ def run_pornrips(job, params):
             date_start=date_normalized or None,
             date_end=end_normalized or None,
         )
+        if not post_urls and (date_normalized or end_normalized) and not job.stop_requested:
+            job.add_log("Search returned nothing (likely Cloudflare 403). Falling back to date-range crawl + title filter.", "warn")
+            fb_start = date_normalized or end_normalized
+            fb_end = end_normalized or date_normalized
+            post_urls = scrape_date_range(fb_start, fb_end, max_pages, job, search_term)
     elif is_range:
         job.add_log("Date range: " + date_normalized + " → " + end_normalized)
         post_urls = scrape_date_range(date_normalized, end_normalized, max_pages, job)
