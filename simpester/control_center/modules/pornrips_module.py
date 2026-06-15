@@ -410,7 +410,7 @@ def scrape_pasted_search(search_html, job, search_term="", date_start=None, date
         start, end = end, start
     if start and not end:
         end = start
-    urls = _extract_posts(html, search_term, start, end)
+    urls = _extract_posts(html, "", start, end)
     if not urls:
         job.add_log("Parsed 0 posts from pasted HTML. Make sure you pasted the search results page (with post links), not the Cloudflare challenge page.", "warn")
     else:
