@@ -21,6 +21,18 @@
       <label for="pr-excl">Excluded studios (comma separated)</label>
       <input class="input" id="pr-excl" value="Brazzers, Naughty America, Reality Kings, Digital Playground" />
     </div>
+    <div class="field">
+      <label for="pr-adv-mode">Advanced studio filter</label>
+      <select class="input" id="pr-adv-mode">
+        <option value="Disabled">Disabled</option>
+        <option value="Include">Include (whitelist)</option>
+        <option value="Exclude">Exclude (blacklist)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="pr-studios">Studios (comma separated)</label>
+      <input class="input" id="pr-studios" placeholder="BangBros18, EvilAngel, Vixen" />
+    </div>
     <div class="grid grid-cols-2 gap-3">
       <div class="field">
         <label for="pr-pages">Max index pages</label>
@@ -58,7 +70,7 @@
       </div>
       <div class="glass rounded-xl p-5">
         <div class="text-on-surface-variant text-xs font-semibold uppercase tracking-wide">Downloaded</div>
-        <div class="stat-value text-2xl mt-2" id="pr-stat-mb">0 MB</div>
+        <div class="stat-value text-2xl mt-2 text-primary" id="pr-stat-mb">0 MB</div>
       </div>
     </div>
 
@@ -87,6 +99,20 @@
     document.getElementById("pr-status").innerHTML = Simp.badge(status);
   }
 
+  (async () => {
+    try {
+      const cfg = await Simp.get("/api/pornrips/config");
+      if (cfg.date) document.getElementById("pr-date").value = cfg.date;
+      if (cfg.output_dir) document.getElementById("pr-dir").value = cfg.output_dir;
+      if (cfg.excluded) document.getElementById("pr-excl").value = cfg.excluded;
+      if (cfg.max_pages != null) document.getElementById("pr-pages").value = cfg.max_pages;
+      if (cfg.workers != null) document.getElementById("pr-workers").value = cfg.workers;
+      if (cfg.advanced_filter_mode) document.getElementById("pr-adv-mode").value = cfg.advanced_filter_mode;
+      if (cfg.selected_studios) document.getElementById("pr-studios").value =
+        Array.isArray(cfg.selected_studios) ? cfg.selected_studios.join(", ") : cfg.selected_studios;
+    } catch (e) { /* first run: keep the defaults already in the form */ }
+  })();
+
   prStart.addEventListener("click", async () => {
     const date = document.getElementById("pr-date").value.trim();
     if (!date) {
@@ -99,6 +125,8 @@
       excluded: document.getElementById("pr-excl").value.trim(),
       max_pages: document.getElementById("pr-pages").value,
       workers: document.getElementById("pr-workers").value,
+      advanced_filter_mode: document.getElementById("pr-adv-mode").value,
+      selected_studios: document.getElementById("pr-studios").value.trim(),
     };
     prSetRunning(true);
     prRenderStatus("running");

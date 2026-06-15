@@ -42,7 +42,15 @@ def _as(value, cast, default=None):
 def run_wallpaper(job, params):
     from src.scraper import WallpaperScraper
 
-    site = params.get("site") or "margaretqualley"
+    requested_site = (params.get("site") or "").strip()
+    base_url = (params.get("base_url") or "").strip()
+    if base_url and (not requested_site or requested_site == "margaretqualley"):
+        site = "custom"
+    else:
+        site = requested_site or "margaretqualley"
+
+    if base_url and site == "custom":
+        job.add_log(f"Custom URL mode → scraping {base_url} with a neutral profile.")
     job.add_log(f"Initializing Fetch Wallpaper for site '{site}'…")
     job.set_stats(site=site, pages=0, images_found=0, status_text="starting")
 
@@ -65,14 +73,15 @@ def run_wallpaper(job, params):
             general[cfg_key] = val
     if params.get("download_dir"):
         general["download_dir"] = params["download_dir"]
-    if params.get("base_url"):
-        scraper.config.setdefault("site", {})["base_url"] = params["base_url"]
+    if base_url:
+        scraper.config.setdefault("site", {})["base_url"] = base_url
 
     job.add_log(
         "Config → "
         f"min {general.get('min_width')}x{general.get('min_height')}, "
         f"max_pages {general.get('max_pages')}, depth {general.get('crawl_depth')}, "
         f"workers {general.get('max_workers')}, dir {general.get('download_dir')}"
+        + (f", base_url {base_url}" if base_url else "")
     )
 
     handler = _JobLogHandler(job)

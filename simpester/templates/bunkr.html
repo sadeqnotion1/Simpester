@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Bunkr Extractor{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto grid lg:grid-cols-[380px_1fr] gap-6">
+
+  <!-- Config -->
+  <section class="glass rounded-xl p-6 space-y-4 self-start">
+    <div class="flex items-center gap-3">
+      <span class="material-symbols-outlined text-primary">cloud_download</span>
+      <h2 class="font-display text-lg font-semibold">Bunkr extractor</h2>
+    </div>
+
+    <div class="field">
+      <label for="bk-url">Bunkr album / file URL</label>
+      <input class="input" id="bk-url" placeholder="https://bunkr.cr/a/xxxx" />
+    </div>
+    <div class="field">
+      <label for="bk-dir">Download directory</label>
+      <input class="input" id="bk-dir" placeholder="downloads/bunkr" />
+    </div>
+
+    <div class="grid grid-cols-2 gap-3">
+      <div class="field">
+        <label for="bk-timeout">Timeout (s)</label>
+        <input class="input" id="bk-timeout" type="number" value="30" />
+      </div>
+      <div class="field">
+        <label for="bk-rate">Rate limit (s)</label>
+        <input class="input" id="bk-rate" type="number" step="0.1" value="1.0" />
+      </div>
+    </div>
+
+    <label class="flex items-center gap-2 text-sm text-on-surface-variant">
+      <input type="checkbox" id="bk-download" checked />
+      Download files after resolving (uncheck to only save the link list)
+    </label>
+
+    <div class="flex gap-3 pt-2">
+      <button class="btn btn-primary flex-1" id="bk-start">
+        <span class="material-symbols-outlined text-[20px]">play_arrow</span> Start
+      </button>
+      <button class="btn btn-danger" id="bk-stop" disabled>
+        <span class="material-symbols-outlined text-[20px]">stop</span> Stop
+      </button>
+    </div>
+  </section>
+
+  <!-- Live -->
+  <section class="space-y-4">
+    <div class="grid grid-cols-3 gap-4">
+      <div class="glass rounded-xl p-5">
+        <div class="text-on-surface-variant text-xs font-semibold uppercase tracking-wide">Links resolved</div>
+        <div class="stat-value text-3xl mt-2" id="bk-stat-links">0</div>
+      </div>
+      <div class="glass rounded-xl p-5">
+        <div class="text-on-surface-variant text-xs font-semibold uppercase tracking-wide">Downloaded</div>
+        <div class="stat-value text-3xl mt-2 text-primary" id="bk-stat-downloaded">0</div>
+      </div>
+      <div class="glass rounded-xl p-5">
+        <div class="text-on-surface-variant text-xs font-semibold uppercase tracking-wide">Status</div>
+        <div class="mt-3" id="bk-stat-status"><span class="badge">idle</span></div>
+      </div>
+    </div>
+
+    <div class="glass rounded-xl p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-display font-semibold">Live log</h3>
+        <span class="text-xs text-on-surface-variant" id="bk-jobid"></span>
+      </div>
+      <div class="console" id="bk-log"><div class="log-line log-info">Paste a bunkr album or file URL and press Start.</div></div>
+    </div>
+  </section>
+
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  const bkStart = document.getElementById("bk-start");
+  const bkStop = document.getElementById("bk-stop");
+  let bkJobId = null;
+
+  function bkSetRunning(running) {
+    bkStart.disabled = running;
+    bkStop.disabled = !running;
+  }
+  function bkRenderStatus(status) {
+    document.getElementById("bk-stat-status").innerHTML = Simp.badge(status);
+  }
+
+  bkStart.addEventListener("click", async () => {
+    const payload = {
+      url: document.getElementById("bk-url").value.trim(),
+      download_dir: document.getElementById("bk-dir").value.trim(),
+      timeout: document.getElementById("bk-timeout").value,
+      rate_limit: document.getElementById("bk-rate").value,
+      download: document.getElementById("bk-download").checked,
+    };
+    bkSetRunning(true);
+    bkRenderStatus("running");
+    const res = await Simp.post("/api/bunkr/start", payload);
+    bkJobId = res.job_id;
+    document.getElementById("bk-jobid").textContent = "job " + bkJobId;
+    trackJob(bkJobId, {
+      onUpdate: (snap) => {
+        Simp.renderLog(document.getElementById("bk-log"), snap.log);
+        document.getElementById("bk-stat-links").textContent = snap.stats.links || 0;
+        document.getElementById("bk-stat-downloaded").textContent = snap.stats.downloaded || 0;
+        bkRenderStatus(snap.status);
+        if (snap.status !== "running") bkSetRunning(false);
+      },
+    });
+  });
+
+  bkStop.addEventListener("click", async () => {
+    if (bkJobId) await Simp.post(`/api/jobs/${bkJobId}/stop`, {});
+    bkStop.disabled = true;
+  });
+</script>
+{% endblock %}

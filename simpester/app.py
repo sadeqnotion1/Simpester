@@ -21,8 +21,14 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
+# Ensure the Fetch Wallpaper src/ package is importable.
+_FW_DIR = os.path.normpath(os.path.join(BASE_DIR, "..", "Fetch Wallpaper"))
+if os.path.isdir(_FW_DIR) and _FW_DIR not in sys.path:
+    sys.path.insert(0, _FW_DIR)
+
+from control_center import config
 from control_center.jobs import JobManager
-from control_center.modules import pornrips_module, wallpaper_module
+from control_center.modules import bunkr_module, pornrips_module, urllist_module, wallpaper_module
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.config["JSON_SORT_KEYS"] = False
@@ -50,6 +56,22 @@ MODULES = [
         "desc": "Resolve 1080p posts for a date, then fetch torrents, magnets and screenshots in parallel.",
         "route": "/pornrips",
     },
+    {
+        "id": "bunkr",
+        "name": "Bunkr Extractor",
+        "icon": "cloud_download",
+        "tag": "Resolver",
+        "desc": "Resolve a bunkr.cr album or file to signed CDN links, then download them.",
+        "route": "/bunkr",
+    },
+    {
+        "id": "urllist",
+        "name": "URL List",
+        "icon": "format_list_bulleted",
+        "tag": "Downloader",
+        "desc": "Download a flat list of direct image URLs, skipping thumbnails.",
+        "route": "/urllist",
+    },
 ]
 
 
@@ -72,6 +94,11 @@ def pornrips_page():
     return render_template("pornrips.html", **_ctx("pornrips"))
 
 
+@app.route("/bunkr")
+def bunkr_page():
+    return render_template("bunkr.html", **_ctx("bunkr"))
+
+
 @app.route("/settings")
 def settings_page():
     return render_template("settings.html", **_ctx("settings"))
@@ -91,9 +118,42 @@ def api_wallpaper_start():
 @app.post("/api/pornrips/start")
 def api_pornrips_start():
     params = request.get_json(silent=True) or {}
+    config.save_config("pornrips", {
+        "date": params.get("date", ""),
+        "output_dir": params.get("output_dir", ""),
+        "excluded": params.get("excluded", ""),
+        "max_pages": params.get("max_pages", 5),
+        "workers": params.get("workers", 5),
+        "advanced_filter_mode": params.get("advanced_filter_mode", "Disabled"),
+        "selected_studios": params.get("selected_studios", ""),
+    })
     date = params.get("date") or ""
     job = jobs.create("pornrips", f"Pornripsto · {date or 'today'}")
     jobs.run(job, lambda j: pornrips_module.run_pornrips(j, params))
+    return jsonify({"job_id": job.id})
+
+
+@app.post("/api/bunkr/start")
+def api_bunkr_start():
+    params = request.get_json(silent=True) or {}
+    label = params.get("url") or "bunkr"
+    job = jobs.create("bunkr", f"Bunkr · {label}")
+    jobs.run(job, lambda j: bunkr_module.run_bunkr(j, params))
+    return jsonify({"job_id": job.id})
+
+
+@app.get("/urllist")
+def urllist_page():
+    return render_template("urllist.html", **_ctx("urllist"))
+
+
+@app.post("/api/urllist/start")
+def api_urllist_start():
+    params = request.get_json(silent=True) or {}
+    if not (params.get("urls") or "").strip() and not (params.get("file_path") or "").strip():
+        return jsonify({"error": "Provide URLs (paste a list) or a file path."}), 400
+    job = jobs.create("urllist", "URL list download")
+    jobs.run(job, lambda j: urllist_module.run_urllist(j, params))
     return jsonify({"job_id": job.id})
 
 
@@ -124,6 +184,35 @@ def api_jobs():
 @app.get("/api/state")
 def api_state():
     return jsonify(jobs.overview(MODULES))
+
+
+# ---------------------------------------------------------------------------
+# Pornripsto saved settings
+# ---------------------------------------------------------------------------
+PORNRIPS_CONFIG_DEFAULTS = {
+    "date": "",
+    "output_dir": "",
+    "excluded": "Brazzers, Naughty America, Reality Kings, Digital Playground",
+    "max_pages": 5,
+    "workers": 5,
+    "advanced_filter_mode": "Disabled",
+    "selected_studios": "BangBros18, BrazzersExxtra, EvilAngel, ExxxtraSmall, FemJoy, GirlCum, RealitySis, Watch4Beauty, Blacked, Nympho, PlayboyPlus, Vixen",
+}
+
+
+@app.get("/api/pornrips/config")
+def api_pornrips_config_get():
+    return jsonify(config.load_config("pornrips", PORNRIPS_CONFIG_DEFAULTS))
+
+
+@app.post("/api/pornrips/config")
+def api_pornrips_config_set():
+    params = request.get_json(silent=True) or {}
+    merged = config.load_config("pornrips", PORNRIPS_CONFIG_DEFAULTS)
+    for key in PORNRIPS_CONFIG_DEFAULTS:
+        if key in params:
+            merged[key] = params[key]
+    return jsonify(config.save_config("pornrips", merged))
 
 
 # --------------------------- launcher -------------------------------------

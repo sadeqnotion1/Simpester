@@ -156,6 +156,20 @@ def run_pornrips(job, params):
     excluded = excluded or DEFAULT_EXCLUDED
     excluded_lower = [e.lower() for e in excluded]
 
+    adv_mode = (params.get("advanced_filter_mode") or "Disabled").strip().capitalize()
+    if adv_mode not in ("Disabled", "Include", "Exclude"):
+        adv_mode = "Disabled"
+    selected = params.get("selected_studios")
+    if isinstance(selected, str):
+        selected = [s.strip() for s in selected.split(",") if s.strip()]
+    selected = selected or []
+    selected_lower = [s.lower() for s in selected]
+    if adv_mode != "Disabled" and selected_lower:
+        job.add_log("Advanced filter: " + adv_mode + " → " + ", ".join(selected))
+    elif adv_mode != "Disabled":
+        job.add_log("Advanced filter set to " + adv_mode + " but no studios listed; ignoring.", "warn")
+        adv_mode = "Disabled"
+
     job.set_stats(date=date_normalized, posts_found=0, resolved=0, files=0, total_mb=0.0, skipped=0)
     job.add_log("Output → " + out_dir)
     job.add_log("Excluded studios: " + ", ".join(excluded))
@@ -192,6 +206,19 @@ def run_pornrips(job, params):
             job.set_stats(skipped=counters["skipped"])
             job.add_log("Skipping excluded studio: " + details["title"])
             return
+
+        if adv_mode != "Disabled" and selected_lower:
+            starts = any(title_lower.startswith(s) for s in selected_lower)
+            if adv_mode == "Exclude" and starts:
+                counters["skipped"] += 1
+                job.set_stats(skipped=counters["skipped"])
+                job.add_log("Skipping (advanced blacklist): " + details["title"])
+                return
+            if adv_mode == "Include" and not starts:
+                counters["skipped"] += 1
+                job.set_stats(skipped=counters["skipped"])
+                job.add_log("Skipping (advanced whitelist): " + details["title"])
+                return
 
         counters["resolved"] += 1
         job.set_stats(resolved=counters["resolved"])

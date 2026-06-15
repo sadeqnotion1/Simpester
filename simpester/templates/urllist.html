@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}URL List Downloader{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto grid lg:grid-cols-[380px_1fr] gap-6">
+
+  <!-- Config -->
+  <section class="glass rounded-xl p-6 space-y-4 self-start">
+    <div class="flex items-center gap-3">
+      <span class="material-symbols-outlined text-primary">format_list_bulleted</span>
+      <h2 class="font-display text-lg font-semibold">URL list configuration</h2>
+    </div>
+
+    <div class="field">
+      <label for="ul-urls">URLs (one per line)</label>
+      <textarea class="input" id="ul-urls" rows="7"
+        placeholder="https://jpg6.su/img/...&#10;https://example.com/photo.jpg&#10;# lines starting with # are ignored"></textarea>
+    </div>
+    <div class="field">
+      <label for="ul-file">…or a file path on disk (optional)</label>
+      <input class="input" id="ul-file" placeholder="E:\Projects\links\29.txt" />
+    </div>
+    <div class="field">
+      <label for="ul-dir">Download directory</label>
+      <input class="input" id="ul-dir" placeholder="./downloads/url_list" />
+    </div>
+
+    <div class="grid grid-cols-2 gap-3">
+      <div class="field">
+        <label for="ul-minw">Min width</label>
+        <input class="input" id="ul-minw" type="number" value="800" />
+      </div>
+      <div class="field">
+        <label for="ul-minh">Min height</label>
+        <input class="input" id="ul-minh" type="number" value="600" />
+      </div>
+      <div class="field">
+        <label for="ul-timeout">Timeout (s)</label>
+        <input class="input" id="ul-timeout" type="number" value="30" />
+      </div>
+      <div class="field">
+        <label for="ul-rate">Rate limit (s)</label>
+        <input class="input" id="ul-rate" type="number" step="0.1" value="1.0" />
+      </div>
+    </div>
+
+    <div class="flex gap-3 pt-2">
+      <button class="btn btn-primary flex-1" id="ul-start">
+        <span class="material-symbols-outlined text-[20px]">play_arrow</span> Start
+      </button>
+      <button class="btn btn-danger" id="ul-stop" disabled>
+        <span class="material-symbols-outlined text-[20px]">stop</span> Stop
+      </button>
+    </div>
+  </section>
+
+  <!-- Live -->
+  <section class="space-y-4">
+    <div class="grid grid-cols-2 gap-4">
+      <div class="glass rounded-xl p-5">
+        <div class="text-on-surface-variant text-xs font-semibold uppercase tracking-wide">Downloaded</div>
+        <div class="stat-value text-3xl mt-2 text-primary" id="ul-stat-downloaded">0</div>
+      </div>
+      <div class="glass rounded-xl p-5">
+        <div class="text-on-surface-variant text-xs font-semibold uppercase tracking-wide">Status</div>
+        <div class="mt-3" id="ul-stat-status"><span class="badge">idle</span></div>
+      </div>
+    </div>
+
+    <div class="glass rounded-xl p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-display font-semibold">Live log</h3>
+        <span class="text-xs text-on-surface-variant" id="ul-jobid"></span>
+      </div>
+      <div class="console" id="ul-log"><div class="log-line log-info">Paste a list of image URLs and press Start.</div></div>
+    </div>
+  </section>
+
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  const ulStart = document.getElementById("ul-start");
+  const ulStop = document.getElementById("ul-stop");
+  let ulJobId = null;
+
+  function ulSetRunning(running) {
+    ulStart.disabled = running;
+    ulStop.disabled = !running;
+  }
+
+  function ulRenderStatus(status) {
+    document.getElementById("ul-stat-status").innerHTML = Simp.badge(status);
+  }
+
+  ulStart.addEventListener("click", async () => {
+    const payload = {
+      urls: document.getElementById("ul-urls").value,
+      file_path: document.getElementById("ul-file").value.trim(),
+      download_dir: document.getElementById("ul-dir").value.trim(),
+      min_width: document.getElementById("ul-minw").value,
+      min_height: document.getElementById("ul-minh").value,
+      timeout: document.getElementById("ul-timeout").value,
+      rate_limit: document.getElementById("ul-rate").value,
+    };
+    ulSetRunning(true);
+    ulRenderStatus("running");
+    const res = await Simp.post("/api/urllist/start", payload);
+    if (!res || !res.job_id) {
+      ulRenderStatus("error");
+      ulSetRunning(false);
+      document.getElementById("ul-log").innerHTML =
+        '<div class="log-line log-error">' + Simp.escape((res && res.error) || "Failed to start") + '</div>';
+      return;
+    }
+    ulJobId = res.job_id;
+    document.getElementById("ul-jobid").textContent = "job " + ulJobId;
+    trackJob(ulJobId, {
+      onUpdate: (snap) => {
+        Simp.renderLog(document.getElementById("ul-log"), snap.log);
+        document.getElementById("ul-stat-downloaded").textContent = snap.stats.downloaded || 0;
+        ulRenderStatus(snap.status);
+        if (snap.status !== "running") ulSetRunning(false);
+      },
+    });
+  });
+
+  ulStop.addEventListener("click", async () => {
+    if (ulJobId) await Simp.post(`/api/jobs/${ulJobId}/stop`, {});
+    ulStop.disabled = true;
+  });
+</script>
+{% endblock %}
