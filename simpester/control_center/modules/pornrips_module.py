@@ -419,6 +419,17 @@ def scrape_pasted_search(search_html, job, search_term="", date_start=None, date
     return urls
 
 
+def _parse_url_list(text):
+    """Parse a pasted list of post URLs (newline/comma separated)."""
+    urls, seen = [], set()
+    for line in (text or "").replace(",", "\n").split("\n"):
+        u = line.strip()
+        if u.startswith("http") and u not in seen:
+            seen.add(u)
+            urls.append(u)
+    return urls
+
+
 def run_pornrips(job, params):
     raw_date = (params.get("date") or params.get("date_start") or "").strip()
     raw_end = (params.get("date_end") or "").strip()
@@ -426,8 +437,8 @@ def run_pornrips(job, params):
 
     date_normalized = raw_date.replace("-", "/").strip("/")
     end_normalized = raw_end.replace("-", "/").strip("/")
-    if not date_normalized and not search_term and not (params.get("search_html") or "").strip():
-        raise ValueError("Provide a date/start date, a search term, or pasted search HTML.")
+    if not date_normalized and not search_term and not (params.get("search_html") or "").strip() and not (params.get("post_urls") or "").strip():
+        raise ValueError("Provide a date, a search term, pasted HTML, or pasted post links.")
 
     is_range = bool(end_normalized) and end_normalized != date_normalized
 
@@ -471,7 +482,12 @@ def run_pornrips(job, params):
     job.add_log("Output → " + out_dir)
     job.add_log("Excluded studios: " + ", ".join(excluded))
 
-    if search_term or (params.get("search_html") or "").strip():
+    pasted_urls = _parse_url_list(params.get("post_urls", ""))
+    if pasted_urls:
+        job.add_log("Using " + str(len(pasted_urls)) + " pasted post links (from the browser extension).")
+        job.set_stats(posts_found=len(pasted_urls))
+        post_urls = pasted_urls
+    elif search_term or (params.get("search_html") or "").strip():
         pasted = (params.get("search_html") or "").strip()
         if pasted:
             job.add_log("Search mode → parsing pasted browser HTML (Cloudflare bypassed).")

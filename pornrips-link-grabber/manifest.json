@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "PornRips Link Grabber",
+  "version": "1.0",
+  "description": "Copies pornrips.to post links from the current search/listing page to the clipboard.",
+  "permissions": ["clipboardWrite"],
+  "host_permissions": ["*://pornrips.to/*", "*://*.pornrips.to/*"],
+  "content_scripts": [
+    {
+      "matches": ["*://pornrips.to/*", "*://*.pornrips.to/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

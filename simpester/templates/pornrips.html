@@ -27,6 +27,11 @@
         placeholder="In your browser: open the ?s= search, View Source (Ctrl+U), copy all, paste here"></textarea>
     </div>
     <div class="field">
+      <label for="pr-post-urls">Paste post links (one per line — from the browser extension)</label>
+      <textarea class="input" id="pr-post-urls" rows="4"
+        placeholder="https://pornrips.to/some-post/&#10;https://pornrips.to/another-post/"></textarea>
+    </div>
+    <div class="field">
       <label for="pr-dir">Output directory</label>
       <input class="input" id="pr-dir" placeholder="G:/SimpCounty/Pornrips" />
     </div>
@@ -150,6 +155,7 @@
       date_end: document.getElementById("pr-date-end").value.trim(),
       search_term: document.getElementById("pr-search").value.trim(),
       search_html: document.getElementById("pr-search-html").value.trim(),
+      post_urls: document.getElementById("pr-post-urls").value.trim(),
       output_dir: document.getElementById("pr-dir").value.trim(),
       excluded: document.getElementById("pr-excl").value.trim(),
       max_pages: document.getElementById("pr-pages").value,
