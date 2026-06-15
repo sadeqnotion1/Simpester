@@ -103,8 +103,11 @@ def _fetch_search(url):
         return resp.read().decode("utf-8", "ignore")
 
 
-def _download_binary(url, dest_path, timeout=60):
-    req = urllib.request.Request(url, headers=HEADERS)
+def _download_binary(url, dest_path, timeout=60, referer=None):
+    headers = HEADERS.copy()
+    if referer:
+        headers["Referer"] = referer
+    req = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         data = resp.read()
     with open(dest_path, "wb") as fh:
@@ -217,15 +220,41 @@ def scrape_movie_details(post_url, job):
     if "1080p" not in html and "1080P" not in html:
         return None  # keep parity with the original: 1080p posts only
 
-    torrents = re.findall(r'href="([^"]+\.torrent)"', html)
-    screenshots = re.findall(r'(https://img\d*\.pixhost\.to/images/[^\s"\']+\.(?:jpg|jpeg|png|webp))', html)
-    magnets = re.findall(r'(magnet:\?xt=urn:btih:[^\s"\']+)', html)
+    torrents = re.findall(r'href="?([^"\s>]+\.torrent)"?', html)
+    magnets = re.findall(r'(magnet:\?xt=urn:btih:[^\s"\'<>]+)', html)
+
+    # Screenshots: extract pixhost show pages + thumbnails to build full image URLs.
+    screenshots = []
+    pixhost_links = re.findall(r'<a\s+[^>]*href=["\']?([^"\'\s]*pixhost\.(?:cc|to)/show/[^"\'\s>]+)["\']?', html)
+    thumbs = re.findall(r'src=["\']?([^"\'\s]*pixhost\.(?:cc|to)/thumbs/([^"\'\s>]+))["\']?', html)
+    for idx, show_url in enumerate(pixhost_links):
+        show_match = re.search(r'pixhost\.(?:cc|to)/show/(\d+)/(.+)', show_url)
+        if not show_match:
+            continue
+        folder, filename = show_match.group(1), show_match.group(2)
+        full_url = None
+        thumb_url = None
+        for thumb_src, path in thumbs:
+            if f"{folder}/{filename}" in path:
+                thumb_url = thumb_src
+                server_match = re.search(r't(\d+)\.pixhost\.(?:cc|to)', thumb_src)
+                if server_match:
+                    full_url = f"https://img{server_match.group(1)}.pixhost.cc/images/{folder}/{filename}"
+                    break
+        if not full_url:
+            full_url = f"https://img1.pixhost.cc/images/{folder}/{filename}"
+        screenshots.append({
+            'index': idx + 1,
+            'show_page_url': show_url,
+            'thumb_url': thumb_url,
+            'full_url': full_url,
+        })
 
     return {
         "title": title,
         "url": post_url,
         "torrents": list(dict.fromkeys(torrents)),
-        "screenshots": list(dict.fromkeys(screenshots)),
+        "screenshots": screenshots,
         "magnets": list(dict.fromkeys(magnets)),
     }
 
@@ -582,13 +611,16 @@ def run_pornrips(job, params):
             except Exception as exc:  # noqa: BLE001
                 job.add_log("  torrent failed: " + str(exc), "warn")
 
-        for j, shot in enumerate(details["screenshots"]):
+        for shot in details["screenshots"]:
             if job.stop_requested:
                 return
-            ext = shot.rsplit(".", 1)[-1].split("?")[0]
-            shot_path = os.path.join(post_dir, "screenshot_" + str(j + 1) + "." + ext)
+            if not shot.get("full_url"):
+                continue
+            ext = shot["full_url"].rsplit(".", 1)[-1].split("?")[0]
+            shot_path = os.path.join(post_dir, "screenshot_" + str(shot["index"]) + "." + ext)
             try:
-                size = _download_binary(shot, shot_path)
+                referer = shot.get("show_page_url")
+                size = _download_binary(shot["full_url"], shot_path, referer=referer)
                 total_bytes[0] += size
                 counters["files"] += 1
             except Exception as exc:  # noqa: BLE001
