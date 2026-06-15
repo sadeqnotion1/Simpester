@@ -160,11 +160,14 @@ def scan_studios(path):
 
 def run_pornrips(job, params):
     raw_date = (params.get("date") or "").strip()
-    date_normalized = raw_date.replace("/", "-").strip("-")
+    # pornrips.to URLs use slash-separated dates: /2026/06/13/
+    date_normalized = raw_date.replace("-", "/").strip("/")
     if not date_normalized:
         raise ValueError("A date is required, e.g. 2024-06-01")
 
-    out_dir = params.get("output_dir") or os.path.join(os.getcwd(), "downloads", "pornrips", date_normalized)
+    out_dir = params.get("output_dir") or os.path.join(
+        os.getcwd(), "downloads", "pornrips", date_normalized.replace("/", "-")
+    )
     os.makedirs(out_dir, exist_ok=True)
 
     max_pages = int(params.get("max_pages") or 5)
