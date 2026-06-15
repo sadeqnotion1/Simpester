@@ -34,9 +34,50 @@ def _fetch_url(url, timeout=30):
         return resp.read().decode(charset, errors="replace")
 
 
+_SEARCH_BROWSER = None
+
+def _close_search_browser():
+    global _SEARCH_BROWSER
+    if _SEARCH_BROWSER is not None:
+        try:
+            _SEARCH_BROWSER.quit()
+        except Exception:
+            pass
+        _SEARCH_BROWSER = None
+
+def _browser_get(url, wait=30):
+    """Render a Cloudflare-challenged page in a real headless Chrome
+    (undetected-chromedriver), waiting for the 'Just a moment…' JS challenge to
+    clear. One driver is reused so the cf_clearance cookie persists across pages."""
+    global _SEARCH_BROWSER
+    import time
+    import atexit
+    import undetected_chromedriver as uc
+
+    if _SEARCH_BROWSER is None:
+        opts = uc.ChromeOptions()
+        opts.add_argument("--headless=new")
+        opts.add_argument("--window-size=1280,900")
+        opts.add_argument("--no-sandbox")
+        opts.add_argument("--disable-dev-shm-usage")
+        _SEARCH_BROWSER = uc.Chrome(options=opts)
+        atexit.register(_close_search_browser)
+
+    drv = _SEARCH_BROWSER
+    drv.get(url)
+    deadline = time.time() + wait
+    while time.time() < deadline:
+        html = drv.page_source or ""
+        title = (drv.title or "").lower()
+        if "just a moment" not in title and "cf-browser-verification" not in html:
+            return html
+        time.sleep(1.0)
+    return drv.page_source or ""
+
 def _fetch_search(url):
-    """Fetch a Cloudflare-protected page (the ?s= search endpoint).
-    Tries a TLS-impersonating client first, then cloudscraper, then plain urllib."""
+    """Fetch the Cloudflare-protected ?s= search endpoint.
+    HTTP clients can't pass the JS challenge, so we try them quickly and then
+    fall back to a real browser (undetected-chromedriver)."""
     headers = {
         "User-Agent": HEADERS["User-Agent"],
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -47,16 +88,14 @@ def _fetch_search(url):
     try:
         from curl_cffi import requests as cffi_requests
         r = cffi_requests.get(url, headers=headers, impersonate="chrome", timeout=30)
-        if r.status_code == 200:
+        if r.status_code == 200 and "just a moment" not in r.text.lower():
             return r.text
     except Exception:
         pass
     try:
-        import cloudscraper
-        scraper = cloudscraper.create_scraper()
-        r = scraper.get(url, headers=headers, timeout=30)
-        if r.status_code == 200:
-            return r.text
+        html = _browser_get(url)
+        if html and "just a moment" not in html.lower():
+            return html
     except Exception:
         pass
     req = urllib.request.Request(url, headers=headers)
