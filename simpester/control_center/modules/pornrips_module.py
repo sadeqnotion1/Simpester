@@ -88,8 +88,14 @@ def torrent_to_magnet(torrent_path):
     return "magnet:?xt=urn:btih:" + info_hash
 
 
-def scrape_date_page(date_normalized, max_pages, job):
-    """Collect post URLs from the date index, following pagination."""
+def scrape_date_page(date_normalized, max_pages, job, search_term=""):
+    """Collect post URLs from one date index, following pagination.
+
+    If `search_term` is given, only posts whose listing title contains it
+    (case-insensitive) are kept — filtered at the index level so we never fetch
+    non-matching post pages.
+    """
+    term = (search_term or "").strip().lower()
     post_urls = []
     seen = set()
     page = 1
@@ -104,6 +110,7 @@ def scrape_date_page(date_normalized, max_pages, job):
         except Exception as exc:  # noqa: BLE001
             job.add_log("Index page " + str(page) + " unavailable (" + str(exc) + "). Stopping pagination.", "warn")
             break
+
         matches = re.findall(
             r'<h2 class=["\']?entry-title["\']?><a\s+[^>]*href=["\']?([^"\'\s>]+)["\']?[^>]*>([^<]+)</a>',
             html,
@@ -113,14 +120,20 @@ def scrape_date_page(date_normalized, max_pages, job):
                 r'<a\s+[^>]*href=["\']?([^"\'\s>]+)["\']?\s+rel=["\']?bookmark["\']?>([^<]+)</a>',
                 html,
             )
-        links = [href for href, _title in matches if href.startswith("http")]
-        new = [u for u in links if u not in seen]
-        for u in new:
-            seen.add(u)
-            post_urls.append(u)
-        job.add_log("  found " + str(len(new)) + " new posts (total " + str(len(post_urls)) + ")")
+
+        new = []
+        for href, title in matches:
+            if not href.startswith("http") or href in seen:
+                continue
+            if term and term not in title.lower():
+                continue
+            seen.add(href)
+            post_urls.append(href)
+            new.append(href)
+
+        job.add_log("  found " + str(len(new)) + " matching posts (total " + str(len(post_urls)) + ")")
         job.set_stats(posts_found=len(post_urls), pages=page)
-        if not new:
+        if not matches:
             break
         page += 1
     return post_urls
@@ -167,15 +180,57 @@ def scan_studios(path):
     return sorted(studios, key=str.lower)
 
 
+def scrape_date_range(date_start, date_end, max_pages, job, search_term=""):
+    """Iterate each day in [date_start, date_end] inclusive, collecting post URLs
+    (optionally filtered by search_term). Dates use slash format YYYY/MM/DD."""
+    from datetime import datetime, timedelta
+
+    def _parse(d):
+        return datetime.strptime((d or "").strip().replace("-", "/").strip("/"), "%Y/%m/%d")
+
+    try:
+        start = _parse(date_start)
+        end = _parse(date_end)
+    except ValueError:
+        raise ValueError("Dates must look like 2026-06-01 (or 2026/06/01).")
+    if end < start:
+        start, end = end, start
+
+    all_urls, seen = [], set()
+    day = start
+    while day <= end and not job.stop_requested:
+        ds = day.strftime("%Y/%m/%d")
+        job.add_log("── Date " + ds + " ──")
+        for u in scrape_date_page(ds, max_pages, job, search_term):
+            if u not in seen:
+                seen.add(u)
+                all_urls.append(u)
+        day += timedelta(days=1)
+    job.add_log("Range complete: " + str(len(all_urls)) + " unique matching posts.")
+    return all_urls
+
+
 def run_pornrips(job, params):
-    raw_date = (params.get("date") or "").strip()
-    # pornrips.to URLs use slash-separated dates: /2026/06/13/
+    raw_date = (params.get("date") or params.get("date_start") or "").strip()
+    raw_end = (params.get("date_end") or "").strip()
+    search_term = (params.get("search_term") or "").strip()
+
     date_normalized = raw_date.replace("-", "/").strip("/")
+    end_normalized = raw_end.replace("-", "/").strip("/")
     if not date_normalized:
-        raise ValueError("A date is required, e.g. 2024-06-01")
+        raise ValueError("A date (or start date) is required, e.g. 2024-06-01")
+
+    is_range = bool(end_normalized) and end_normalized != date_normalized
+
+    if is_range:
+        label = date_normalized.replace("/", "-") + "_to_" + end_normalized.replace("/", "-")
+    else:
+        label = date_normalized.replace("/", "-")
+    if search_term:
+        label = re.sub(r"[^\w\-]+", "_", search_term).strip("_") + "_" + label
 
     out_dir = params.get("output_dir") or os.path.join(
-        os.getcwd(), "downloads", "pornrips", date_normalized.replace("/", "-")
+        os.getcwd(), "downloads", "pornrips", label
     )
     os.makedirs(out_dir, exist_ok=True)
 
@@ -201,11 +256,17 @@ def run_pornrips(job, params):
         job.add_log("Advanced filter set to " + adv_mode + " but no studios listed; ignoring.", "warn")
         adv_mode = "Disabled"
 
-    job.set_stats(date=date_normalized, posts_found=0, resolved=0, files=0, total_mb=0.0, skipped=0)
+    job.set_stats(date=label, posts_found=0, resolved=0, files=0, total_mb=0.0, skipped=0)
     job.add_log("Output → " + out_dir)
     job.add_log("Excluded studios: " + ", ".join(excluded))
+    if search_term:
+        job.add_log("Search term: '" + search_term + "' (listing-title match)")
 
-    post_urls = scrape_date_page(date_normalized, max_pages, job)
+    if is_range:
+        job.add_log("Date range: " + date_normalized + " → " + end_normalized)
+        post_urls = scrape_date_range(date_normalized, end_normalized, max_pages, job, search_term)
+    else:
+        post_urls = scrape_date_page(date_normalized, max_pages, job, search_term)
     if job.stop_requested:
         return
     if not post_urls:

@@ -126,6 +126,8 @@ def api_pornrips_start():
         "workers": params.get("workers", 5),
         "advanced_filter_mode": params.get("advanced_filter_mode", "Disabled"),
         "selected_studios": params.get("selected_studios", ""),
+        "date_end": params.get("date_end", ""),
+        "search_term": params.get("search_term", ""),
     })
     date = params.get("date") or ""
     job = jobs.create("pornrips", f"Pornripsto · {date or 'today'}")
@@ -198,6 +200,8 @@ PORNRIPS_CONFIG_DEFAULTS = {
     "advanced_filter_mode": "Disabled",
     "selected_studios": "BangBros18, BrazzersExxtra, EvilAngel, ExxxtraSmall, FemJoy, GirlCum, RealitySis, Watch4Beauty, Blacked, Nympho, PlayboyPlus, Vixen",
     "scan_dir": "",
+    "date_end": "",
+    "search_term": "",
 }
 
 

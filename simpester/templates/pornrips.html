@@ -10,8 +10,16 @@
     </div>
 
     <div class="field">
-      <label for="pr-date">Date</label>
+      <label for="pr-date">Date (or range start)</label>
       <input class="input" id="pr-date" placeholder="2024-06-01" />
+    </div>
+    <div class="field">
+      <label for="pr-date-end">End date (optional — leave blank for a single day)</label>
+      <input class="input" id="pr-date-end" placeholder="2026-06-13" />
+    </div>
+    <div class="field">
+      <label for="pr-search">Search term (optional)</label>
+      <input class="input" id="pr-search" placeholder="vixen" />
     </div>
     <div class="field">
       <label for="pr-dir">Output directory</label>
@@ -121,6 +129,8 @@
       if (cfg.selected_studios) document.getElementById("pr-studios").value =
         Array.isArray(cfg.selected_studios) ? cfg.selected_studios.join(", ") : cfg.selected_studios;
       if (cfg.scan_dir) document.getElementById("pr-scan-dir").value = cfg.scan_dir;
+      if (cfg.date_end) document.getElementById("pr-date-end").value = cfg.date_end;
+      if (cfg.search_term) document.getElementById("pr-search").value = cfg.search_term;
     } catch (e) { /* first run: keep the defaults already in the form */ }
   })();
 
@@ -132,6 +142,8 @@
     }
     const payload = {
       date: date,
+      date_end: document.getElementById("pr-date-end").value.trim(),
+      search_term: document.getElementById("pr-search").value.trim(),
       output_dir: document.getElementById("pr-dir").value.trim(),
       excluded: document.getElementById("pr-excl").value.trim(),
       max_pages: document.getElementById("pr-pages").value,
