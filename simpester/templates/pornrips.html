@@ -33,6 +33,16 @@
       <label for="pr-studios">Studios (comma separated)</label>
       <input class="input" id="pr-studios" placeholder="BangBros18, EvilAngel, Vixen" />
     </div>
+    <div class="field">
+      <label for="pr-scan-dir">Scan a downloaded folder for studios</label>
+      <div class="flex gap-2">
+        <input class="input flex-1" id="pr-scan-dir" placeholder="C:/Users/SadeQ/Videos/xxx/PornRips_2026_05_31" />
+        <button class="btn" id="pr-scan-btn" type="button">
+          <span class="material-symbols-outlined text-[20px]">folder_open</span> Scan
+        </button>
+      </div>
+      <p class="text-xs text-on-surface-variant mt-1">Reads sub-folder names and fills the studios list above.</p>
+    </div>
     <div class="grid grid-cols-2 gap-3">
       <div class="field">
         <label for="pr-pages">Max index pages</label>
@@ -110,6 +120,7 @@
       if (cfg.advanced_filter_mode) document.getElementById("pr-adv-mode").value = cfg.advanced_filter_mode;
       if (cfg.selected_studios) document.getElementById("pr-studios").value =
         Array.isArray(cfg.selected_studios) ? cfg.selected_studios.join(", ") : cfg.selected_studios;
+      if (cfg.scan_dir) document.getElementById("pr-scan-dir").value = cfg.scan_dir;
     } catch (e) { /* first run: keep the defaults already in the form */ }
   })();
 
@@ -143,6 +154,21 @@
         if (snap.status !== "running") prSetRunning(false);
       },
     });
+  });
+
+  document.getElementById("pr-scan-btn").addEventListener("click", async () => {
+    const scanBtn = document.getElementById("pr-scan-btn");
+    const dir = document.getElementById("pr-scan-dir").value.trim();
+    if (!dir) { alert("Enter a folder path to scan."); return; }
+    scanBtn.disabled = true;
+    const res = await Simp.post("/api/pornrips/scan-studios", { scan_dir: dir });
+    scanBtn.disabled = false;
+    if (!res || res.error) { alert((res && res.error) || "Scan failed."); return; }
+    if (!res.studios || !res.studios.length) { alert("No studios found in that folder."); return; }
+    document.getElementById("pr-studios").value = res.studios.join(", ");
+    if (document.getElementById("pr-adv-mode").value === "Disabled") {
+      document.getElementById("pr-adv-mode").value = "Include";
+    }
   });
 
   prStop.addEventListener("click", async () => {

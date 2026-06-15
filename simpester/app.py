@@ -197,6 +197,7 @@ PORNRIPS_CONFIG_DEFAULTS = {
     "workers": 5,
     "advanced_filter_mode": "Disabled",
     "selected_studios": "BangBros18, BrazzersExxtra, EvilAngel, ExxxtraSmall, FemJoy, GirlCum, RealitySis, Watch4Beauty, Blacked, Nympho, PlayboyPlus, Vixen",
+    "scan_dir": "",
 }
 
 
@@ -213,6 +214,21 @@ def api_pornrips_config_set():
         if key in params:
             merged[key] = params[key]
     return jsonify(config.save_config("pornrips", merged))
+
+
+@app.post("/api/pornrips/scan-studios")
+def api_pornrips_scan_studios():
+    params = request.get_json(silent=True) or {}
+    scan_dir = (params.get("scan_dir") or "").strip()
+    if not scan_dir:
+        return jsonify({"error": "A folder path is required."}), 400
+    if not os.path.isdir(scan_dir):
+        return jsonify({"error": "Folder not found: " + scan_dir}), 400
+    studios = pornrips_module.scan_studios(scan_dir)
+    merged = config.load_config("pornrips", PORNRIPS_CONFIG_DEFAULTS)
+    merged["scan_dir"] = scan_dir
+    config.save_config("pornrips", merged)
+    return jsonify({"studios": studios, "count": len(studios)})
 
 
 # --------------------------- launcher -------------------------------------

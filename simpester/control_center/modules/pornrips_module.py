@@ -139,6 +139,25 @@ def scrape_movie_details(post_url, job):
     }
 
 
+def scan_studios(path):
+    """Infer studio names from the sub-folder names of a previously-downloaded
+    folder. A folder like 'BangBros18.24.06.01.Jane.Doe.1080p' yields
+    'BangBros18' (text before the .YY.MM.DD. date marker, else before the first
+    dot). Returns a case-insensitively sorted, de-duplicated list."""
+    if not path or not os.path.isdir(path):
+        return []
+    studios = set()
+    for entry in os.scandir(path):
+        if not entry.is_dir():
+            continue
+        name = entry.name
+        m = re.search(r"\.\d{2,4}\.\d{2}\.\d{2}\.", name)
+        studio = (name[:m.start()] if m else name.split(".")[0]).strip()
+        if studio:
+            studios.add(studio)
+    return sorted(studios, key=str.lower)
+
+
 def run_pornrips(job, params):
     raw_date = (params.get("date") or "").strip()
     date_normalized = raw_date.replace("/", "-").strip("-")
