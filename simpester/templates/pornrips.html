@@ -22,6 +22,11 @@
       <input class="input" id="pr-search" placeholder="vixen" />
     </div>
     <div class="field">
+      <label for="pr-search-html">Paste search-page HTML (term-only, bypasses Cloudflare)</label>
+      <textarea class="input" id="pr-search-html" rows="4"
+        placeholder="In your browser: open the ?s= search, View Source (Ctrl+U), copy all, paste here"></textarea>
+    </div>
+    <div class="field">
       <label for="pr-dir">Output directory</label>
       <input class="input" id="pr-dir" placeholder="G:/SimpCounty/Pornrips" />
     </div>
@@ -144,6 +149,7 @@
       date: date,
       date_end: document.getElementById("pr-date-end").value.trim(),
       search_term: document.getElementById("pr-search").value.trim(),
+      search_html: document.getElementById("pr-search-html").value.trim(),
       output_dir: document.getElementById("pr-dir").value.trim(),
       excluded: document.getElementById("pr-excl").value.trim(),
       max_pages: document.getElementById("pr-pages").value,

@@ -360,6 +360,55 @@ def scrape_search(term, max_pages, job, date_start=None, date_end=None):
     return post_urls
 
 
+def _extract_posts(html, term="", start=None, end=None, seen=None):
+    """Pull post URLs from listing/search HTML, applying an optional title
+    substring filter and [start, end] release-date window (datetimes)."""
+    if seen is None:
+        seen = set()
+    matches = re.findall(
+        r'<h2 class=["\']?entry-title["\']?><a\s+[^>]*href=["\']?([^"\'\s>]+)["\']?[^>]*>([^<]+)</a>',
+        html or "",
+    )
+    if not matches:
+        matches = re.findall(
+            r'<a\s+[^>]*href=["\']?([^"\'\s>]+)["\']?\s+rel=["\']?bookmark["\']?>([^<]+)</a>',
+            html or "",
+        )
+    term_l = (term or "").strip().lower()
+    out = []
+    for href, title in matches:
+        if not href.startswith("http") or href in seen:
+            continue
+        if term_l and term_l not in title.lower():
+            continue
+        if start or end:
+            d = _date_from_title(title)
+            if d is not None and ((start and d < start) or (end and d > end)):
+                continue
+        seen.add(href)
+        out.append(href)
+    return out
+
+def scrape_pasted_search(search_html, job, search_term="", date_start=None, date_end=None):
+    """Parse post URLs from search-results HTML the user pasted from their own
+    browser — bypasses Cloudflare/Turnstile entirely."""
+    from datetime import datetime
+
+    def _parse(d):
+        d = (d or "").strip().replace("-", "/").strip("/")
+        return datetime.strptime(d, "%Y/%m/%d") if d else None
+
+    start, end = _parse(date_start), _parse(date_end)
+    if start and end and end < start:
+        start, end = end, start
+    if start and not end:
+        end = start
+    urls = _extract_posts(search_html or "", search_term, start, end)
+    job.add_log("Parsed " + str(len(urls)) + " posts from pasted HTML.")
+    job.set_stats(posts_found=len(urls))
+    return urls
+
+
 def run_pornrips(job, params):
     raw_date = (params.get("date") or params.get("date_start") or "").strip()
     raw_end = (params.get("date_end") or "").strip()
@@ -367,8 +416,8 @@ def run_pornrips(job, params):
 
     date_normalized = raw_date.replace("-", "/").strip("/")
     end_normalized = raw_end.replace("-", "/").strip("/")
-    if not date_normalized and not search_term:
-        raise ValueError("Provide a date/start date, or a search term.")
+    if not date_normalized and not search_term and not (params.get("search_html") or "").strip():
+        raise ValueError("Provide a date/start date, a search term, or pasted search HTML.")
 
     is_range = bool(end_normalized) and end_normalized != date_normalized
 
@@ -412,20 +461,29 @@ def run_pornrips(job, params):
     job.add_log("Output → " + out_dir)
     job.add_log("Excluded studios: " + ", ".join(excluded))
 
-    if search_term:
-        job.add_log("Search mode → " + SITE + "/?s=" + search_term)
-        if date_normalized or end_normalized:
-            job.add_log("Date window: " + (date_normalized or "any") + " → " + (end_normalized or date_normalized or "any"))
-        post_urls = scrape_search(
-            search_term, max_pages, job,
-            date_start=date_normalized or None,
-            date_end=end_normalized or None,
-        )
-        if not post_urls and (date_normalized or end_normalized) and not job.stop_requested:
-            job.add_log("Search returned nothing (likely Cloudflare 403). Falling back to date-range crawl + title filter.", "warn")
-            fb_start = date_normalized or end_normalized
-            fb_end = end_normalized or date_normalized
-            post_urls = scrape_date_range(fb_start, fb_end, max_pages, job, search_term)
+    if search_term or (params.get("search_html") or "").strip():
+        pasted = (params.get("search_html") or "").strip()
+        if pasted:
+            job.add_log("Search mode → parsing pasted browser HTML (Cloudflare bypassed).")
+            post_urls = scrape_pasted_search(
+                pasted, job, search_term,
+                date_start=date_normalized or None,
+                date_end=end_normalized or None,
+            )
+        else:
+            job.add_log("Search mode → " + SITE + "/?s=" + search_term)
+            if date_normalized or end_normalized:
+                job.add_log("Date window: " + (date_normalized or "any") + " → " + (end_normalized or date_normalized or "any"))
+            post_urls = scrape_search(
+                search_term, max_pages, job,
+                date_start=date_normalized or None,
+                date_end=end_normalized or None,
+            )
+            if not post_urls and (date_normalized or end_normalized) and not job.stop_requested:
+                job.add_log("Search returned nothing (likely Cloudflare 403). Falling back to date-range crawl + title filter.", "warn")
+                fb_start = date_normalized or end_normalized
+                fb_end = end_normalized or date_normalized
+                post_urls = scrape_date_range(fb_start, fb_end, max_pages, job, search_term)
     elif is_range:
         job.add_log("Date range: " + date_normalized + " → " + end_normalized)
         post_urls = scrape_date_range(date_normalized, end_normalized, max_pages, job)
